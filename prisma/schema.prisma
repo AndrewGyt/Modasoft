@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  nombre    String
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+
+  usuarios    Usuario[]
+  proveedores Proveedor[]
+  categorias  Categoria[]
+  productos   Producto[]
+  ventas      Venta[]
+  ordenes     OrdenCompra[]
+  clientes    Cliente[]
+}
+
+model Usuario {
+  id       String @id @default(cuid())
+  tenantId String
+  nombre   String
+  email    String @unique
+  rol      Rol    @default(VENDEDOR)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  ventas  Venta[]
+
+  createdAt DateTime @default(now())
+}
+
+enum Rol {
+  ADMIN
+  VENDEDOR
+  BODEGA
+}
+
+model Proveedor {
+  id          String  @id @default(cuid())
+  tenantId    String
+  nombre      String
+  contacto    String?
+  pais        String?
+  leadTimeDias Int     @default(7)
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  productos Producto[]
+  ordenes  OrdenCompra[]
+
+  createdAt DateTime @default(now())
+}
+
+model Categoria {
+  id       String @id @default(cuid())
+  tenantId String
+  nombre   String
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  productos Producto[]
+}
+
+model Producto {
+  id          String  @id @default(cuid())
+  tenantId    String
+  categoriaId String
+  proveedorId String
+  nombre      String
+  descripcion String?
+  sku         String  @unique
+  precioCompra Float
+  precioVenta  Float
+  temporada   String?
+  imagenUrl   String?
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  categoria Categoria  @relation(fields: [categoriaId], references: [id])
+  proveedor Proveedor  @relation(fields: [proveedorId], references: [id])
+  variantes Variante[]
+}
+
+model Variante {
+  id          String @id @default(cuid())
+  productoId  String
+  talla       String
+  color       String
+  stockActual Int    @default(0)
+  stockMinimo Int    @default(5)
+
+  producto     Producto              @relation(fields: [productoId], references: [id])
+  movimientos  MovimientoInventario[]
+  detallesVenta DetalleVenta[]
+  detallesOrden DetalleOrdenCompra[]
+}
+
+model MovimientoInventario {
+  id        String          @id @default(cuid())
+  varianteId String
+  tipo      TipoMovimiento
+  cantidad  Int
+  motivo    String?
+  usuarioId String?
+
+  variante  Variante @relation(fields: [varianteId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+model Venta {
+  id          String   @id @default(cuid())
+  tenantId    String
+  usuarioId   String
+  clienteId   String?
+  total       Float
+  descuento   Float    @default(0)
+  metodoPago  String
+  createdAt   DateTime @default(now())
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  usuario  Usuario        @relation(fields: [usuarioId], references: [id])
+  cliente  Cliente?       @relation(fields: [clienteId], references: [id])
+  detalles DetalleVenta[]
+}
+
+model DetalleVenta {
+  id           String @id @default(cuid())
+  ventaId      String
+  varianteId   String
+  cantidad     Int
+  precioUnitario Float
+
+  venta    Venta    @relation(fields: [ventaId], references: [id])
+  variante Variante @relation(fields: [varianteId], references: [id])
+}
+
+model OrdenCompra {
+  id            String      @id @default(cuid())
+  tenantId      String
+  proveedorId   String
+  estado        EstadoOrden @default(PENDIENTE)
+  fechaEsperada DateTime?
+  total         Float
+  notas         String?
+  createdAt     DateTime    @default(now())
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id])
+  proveedor Proveedor            @relation(fields: [proveedorId], references: [id])
+  detalles  DetalleOrdenCompra[]
+}
+
+enum EstadoOrden {
+  PENDIENTE
+  ENVIADA
+  RECIBIDA
+  CANCELADA
+}
+
+model DetalleOrdenCompra {
+  id           String @id @default(cuid())
+  ordenId      String
+  varianteId   String
+  cantidad     Int
+  precioUnitario Float
+
+  orden    OrdenCompra @relation(fields: [ordenId], references: [id])
+  variante Variante    @relation(fields: [varianteId], references: [id])
+}
+
+model Cliente {
+  id       String  @id @default(cuid())
+  tenantId String
+  nombre   String
+  telefono String?
+  email    String?
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  ventas Venta[]
+
+  createdAt DateTime @default(now())
+}
