@@ -15,36 +15,34 @@ export default async function InventarioPage() {
     orderBy: { producto: { nombre: "asc" } },
   })
 
-  const stockBajo = variantes.filter(
-    (v) => v.stockActual <= v.stockMinimo
-  )
+  const stockBajo = variantes.filter((v) => v.stockActual <= v.stockMinimo)
 
   return (
     <div className="space-y-6">
-    <div className="flex items-center justify-between">
-    <div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-        Inventario
-        </h1>
-        <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
-        {variantes.length} variantes registradas
-        </p>
-    </div>
-    <Link
-        href="/inventario/nuevo"
-        style={{
-        padding: "10px 20px",
-        borderRadius: "var(--radius-md)",
-        background: "var(--primary)",
-        color: "var(--primary-foreground)",
-        fontSize: "14px",
-        fontWeight: 500,
-        textDecoration: "none",
-        }}
-    >
-        + Nuevo producto
-    </Link>
-    </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+            Inventario
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
+            {variantes.length} variantes registradas
+          </p>
+        </div>
+        <Link
+          href="/inventario/nuevo"
+          style={{
+            padding: "10px 20px",
+            borderRadius: "var(--radius-md)",
+            background: "var(--primary)",
+            color: "var(--primary-foreground)",
+            fontSize: "14px",
+            fontWeight: 500,
+            textDecoration: "none",
+          }}
+        >
+          + Nuevo producto
+        </Link>
+      </div>
 
       {stockBajo.length > 0 && (
         <div
@@ -73,19 +71,20 @@ export default async function InventarioPage() {
               <th className="text-right px-4 py-3 font-medium" style={{ color: "var(--muted-foreground)" }}>Mínimo</th>
               <th className="text-right px-4 py-3 font-medium" style={{ color: "var(--muted-foreground)" }}>Precio venta</th>
               <th className="text-left px-4 py-3 font-medium" style={{ color: "var(--muted-foreground)" }}>Estado</th>
+              <th className="text-right px-4 py-3 font-medium" style={{ color: "var(--muted-foreground)" }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {variantes.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-12" style={{ color: "var(--muted-foreground)" }}>
+                <td colSpan={9} className="text-center py-12" style={{ color: "var(--muted-foreground)" }}>
                   <Package size={32} className="mx-auto mb-2 opacity-40" />
                   <p>No hay productos en inventario</p>
                 </td>
               </tr>
             ) : (
               variantes.map((v) => {
-                const stockBajo = v.stockActual <= v.stockMinimo
+                const bajo = v.stockActual <= v.stockMinimo
                 return (
                   <tr
                     key={v.id}
@@ -117,12 +116,25 @@ export default async function InventarioPage() {
                       <span
                         className="px-2 py-1 rounded-full text-xs font-medium"
                         style={{
-                          background: stockBajo ? "var(--destructive)" : "var(--primary)",
+                          background: bajo ? "var(--destructive)" : "var(--primary)",
                           color: "var(--primary-foreground)",
                         }}
                       >
-                        {stockBajo ? "Stock bajo" : "OK"}
+                        {bajo ? "Stock bajo" : "OK"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/inventario/${v.producto.id}/editar`}
+                        style={{
+                          fontSize: "13px",
+                          color: "var(--primary)",
+                          textDecoration: "none",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Editar
+                      </Link>
                     </td>
                   </tr>
                 )
