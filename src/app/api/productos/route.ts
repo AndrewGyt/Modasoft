@@ -4,29 +4,36 @@ import { NextResponse } from "next/server"
 const TENANT_ID = "tendance-001"
 
 async function getTenant() {
-  let tenant = await db.tenant.findUnique({
-    where: { id: TENANT_ID },
-  })
-
+  let tenant = await db.tenant.findUnique({ where: { id: TENANT_ID } })
   if (!tenant) {
     tenant = await db.tenant.create({
       data: { id: TENANT_ID, nombre: "Tendance" },
     })
   }
-
   return tenant
+}
+
+export async function GET() {
+  const productos = await db.producto.findMany({
+    where: { tenantId: TENANT_ID },
+    include: {
+      categoria: true,
+      proveedor: true,
+      variantes: true,
+    },
+    orderBy: { nombre: "asc" },
+  })
+  return NextResponse.json(productos)
 }
 
 export async function POST(req: Request) {
   try {
     await getTenant()
-
     const body = await req.json()
 
     let categoria = await db.categoria.findFirst({
       where: { nombre: body.categoria, tenantId: TENANT_ID },
     })
-
     if (!categoria) {
       categoria = await db.categoria.create({
         data: { nombre: body.categoria, tenantId: TENANT_ID },
@@ -36,7 +43,6 @@ export async function POST(req: Request) {
     let proveedor = await db.proveedor.findFirst({
       where: { tenantId: TENANT_ID },
     })
-
     if (!proveedor) {
       proveedor = await db.proveedor.create({
         data: { nombre: "Proveedor general", tenantId: TENANT_ID },
