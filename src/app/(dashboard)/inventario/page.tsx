@@ -1,5 +1,6 @@
 import { db } from "@/lib/db"
 import { Package, AlertTriangle } from "lucide-react"
+import Link from "next/link"
 
 export default async function InventarioPage() {
   const variantes = await db.variante.findMany({
@@ -20,16 +21,30 @@ export default async function InventarioPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-            Inventario
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
-            {variantes.length} variantes registradas
-          </p>
-        </div>
-      </div>
+    <div className="flex items-center justify-between">
+    <div>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+        Inventario
+        </h1>
+        <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
+        {variantes.length} variantes registradas
+        </p>
+    </div>
+    <Link
+        href="/inventario/nuevo"
+        style={{
+        padding: "10px 20px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--primary)",
+        color: "var(--primary-foreground)",
+        fontSize: "14px",
+        fontWeight: 500,
+        textDecoration: "none",
+        }}
+    >
+        + Nuevo producto
+    </Link>
+    </div>
 
       {stockBajo.length > 0 && (
         <div
