@@ -124,17 +124,30 @@ export default async function InventarioPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/inventario/${v.producto.id}/editar`}
-                        style={{
-                          fontSize: "13px",
-                          color: "var(--primary)",
-                          textDecoration: "none",
-                          fontWeight: 500,
-                        }}
-                      >
-                        Editar
-                      </Link>
+                      <div className="flex gap-3 justify-end">
+                        <Link
+                          href={`/inventario/${v.producto.id}/qr`}
+                          style={{
+                            fontSize: "13px",
+                            color: "var(--muted-foreground)",
+                            textDecoration: "none",
+                            fontWeight: 500,
+                          }}
+                        >
+                          QR
+                        </Link>
+                        <Link
+                          href={`/inventario/${v.producto.id}/editar`}
+                          style={{
+                            fontSize: "13px",
+                            color: "var(--primary)",
+                            textDecoration: "none",
+                            fontWeight: 500,
+                          }}
+                        >
+                          Editar
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 )
