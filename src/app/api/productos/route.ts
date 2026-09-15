@@ -60,6 +60,7 @@ export async function POST(req: Request) {
         precioCompra: parseFloat(body.precioCompra),
         precioVenta: parseFloat(body.precioVenta),
         temporada: body.temporada || null,
+        marca: body.marca || null,
         variantes: {
           create: {
             talla: body.talla,

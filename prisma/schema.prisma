@@ -73,6 +73,7 @@ model Producto {
   nombre      String
   descripcion String?
   sku         String  @unique
+  marca       String?      
   precioCompra Float
   precioVenta  Float
   temporada   String?
