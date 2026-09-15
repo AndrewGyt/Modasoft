@@ -3,6 +3,13 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
+function generarSKU(categoria: string, marca: string) {
+  const cat = categoria.slice(0, 3).toUpperCase() || "PRD"
+  const mar = marca.slice(0, 2).toUpperCase() || "XX"
+  const num = Math.floor(10000 + Math.random() * 90000)
+  return `${cat}-${mar}-${num}`
+}
+
 export default function NuevoProductoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -10,6 +17,7 @@ export default function NuevoProductoPage() {
     nombre: "",
     descripcion: "",
     sku: "",
+    marca: "",
     precioCompra: "",
     precioVenta: "",
     temporada: "",
@@ -21,7 +29,17 @@ export default function NuevoProductoPage() {
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    const updated = { ...form, [name]: value }
+
+    if (name === "categoria" || name === "marca") {
+      updated.sku = generarSKU(
+        name === "categoria" ? value : form.categoria,
+        name === "marca" ? value : form.marca
+      )
+    }
+
+    setForm(updated)
   }
 
   const handleSubmit = async (e: React.MouseEvent) => {
@@ -80,8 +98,8 @@ export default function NuevoProductoPage() {
             <input name="nombre" value={form.nombre} onChange={handleChange} style={inputStyle} placeholder="Ej: Blusa floral" />
           </div>
           <div>
-            <label style={labelStyle}>SKU</label>
-            <input name="sku" value={form.sku} onChange={handleChange} style={inputStyle} placeholder="Ej: BLU-001" />
+            <label style={labelStyle}>Marca</label>
+            <input name="marca" value={form.marca} onChange={handleChange} style={inputStyle} placeholder="Ej: Zara" />
           </div>
         </div>
 
@@ -116,6 +134,38 @@ export default function NuevoProductoPage() {
             <label style={labelStyle}>Precio venta (Bs.)</label>
             <input name="precioVenta" type="number" value={form.precioVenta} onChange={handleChange} style={inputStyle} placeholder="0.00" />
           </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>SKU (auto-generado)</label>
+          <div className="flex gap-2">
+            <input
+              name="sku"
+              value={form.sku}
+              onChange={handleChange}
+              style={inputStyle}
+              placeholder="Se genera al escribir categoría y marca"
+            />
+            <button
+              onClick={() => setForm({ ...form, sku: generarSKU(form.categoria, form.marca) })}
+              type="button"
+              style={{
+                padding: "8px 14px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--border)",
+                background: "var(--secondary)",
+                color: "var(--secondary-foreground)",
+                fontSize: "13px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Regenerar
+            </button>
+          </div>
+          <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
+            Formato: CATEGORÍA-MARCA-NÚMERO. Puedes editarlo manualmente.
+          </p>
         </div>
       </div>
 
