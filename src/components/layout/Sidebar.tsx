@@ -11,6 +11,7 @@ import {
   Settings,
 } from "lucide-react"
 import { clsx } from "clsx"
+import { Brain } from "lucide-react"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/compras", label: "Compras", icon: Truck },
   { href: "/reportes", label: "Reportes", icon: BarChart3 },
   { href: "/configuracion", label: "Configuración", icon: Settings },
+  { href: "/inteligencia", label: "Inteligencia IA", icon: Brain },
 ]
 
 export default function Sidebar() {
@@ -53,6 +55,7 @@ export default function Sidebar() {
           )
         })}
       </nav>
+      
 
       <div className="p-4 border-t" style={{ borderColor: "var(--sidebar-border)", color: "var(--muted-foreground)" }}>
         <p className="text-xs">ModaSoft v1.0</p>
