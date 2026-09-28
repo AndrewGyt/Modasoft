@@ -35,6 +35,10 @@ export default function NuevaVentaPage() {
   const [descuento, setDescuento] = useState(0)
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [loading, setLoading] = useState(false)
+  const [clienteFiel, setClienteFiel] = useState(false)
+
+  const subtotal = carrito.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0)
+  const total = Math.max(0, subtotal - descuento)
 
   useEffect(() => {
     fetch("/api/productos")
@@ -57,6 +61,12 @@ export default function NuevaVentaPage() {
         setVariantes(todasVariantes)
       })
   }, [])
+
+  useEffect(() => {
+    if (clienteFiel) {
+      setDescuento(parseFloat((subtotal * 0.07).toFixed(2)))
+    }
+  }, [subtotal, clienteFiel])
 
   const variantesFiltradas = variantes.filter(
     (v) =>
@@ -97,9 +107,6 @@ export default function NuevaVentaPage() {
       i.varianteId === varianteId ? { ...i, cantidad } : i
     ))
   }
-
-  const subtotal = carrito.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0)
-  const total = Math.max(0, subtotal - descuento)
 
   const handleRegistrarVenta = async () => {
     if (carrito.length === 0) return
@@ -236,14 +243,36 @@ export default function NuevaVentaPage() {
             <span>Bs. {subtotal.toFixed(2)}</span>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>Descuento</span>
-            <input
-              type="number"
-              value={descuento}
-              onChange={(e) => setDescuento(parseFloat(e.target.value) || 0)}
-              style={{ ...inputStyle, width: "90px", textAlign: "right" }}
-            />
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={clienteFiel}
+                onChange={(e) => {
+                  setClienteFiel(e.target.checked)
+                  if (e.target.checked) {
+                    setDescuento(parseFloat((subtotal * 0.07).toFixed(2)))
+                  } else {
+                    setDescuento(0)
+                  }
+                }}
+              />
+              <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                Cliente fiel (7% descuento)
+              </span>
+            </label>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>Descuento (Bs.)</span>
+              <input
+                type="number"
+                value={descuento}
+                onChange={(e) => {
+                  setDescuento(parseFloat(e.target.value) || 0)
+                  setClienteFiel(false)
+                }}
+                style={{ ...inputStyle, width: "90px", textAlign: "right" }}
+              />
+            </div>
           </div>
 
           <div className="flex justify-between font-bold" style={{ color: "var(--foreground)" }}>

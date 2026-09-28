@@ -73,11 +73,17 @@ model Producto {
   nombre      String
   descripcion String?
   sku         String  @unique
-  marca       String?      
+  marca       String?
   precioCompra Float
   precioVenta  Float
   temporada   String?
   imagenUrl   String?
+
+  // Campos de importación ← agrega estos
+  monedaOrigen    String?   // BRL, USD, ARS, etc.
+  precioOrigen    Float?    // precio en moneda original
+  tipoCambio      Float?    // tipo de cambio usado
+  margenGanancia  Float?    // porcentaje de margen
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   categoria Categoria  @relation(fields: [categoriaId], references: [id])
