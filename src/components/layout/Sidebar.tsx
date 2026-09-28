@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   Package,
@@ -9,9 +9,11 @@ import {
   Truck,
   BarChart3,
   Settings,
+  Brain,
+  LogOut,
 } from "lucide-react"
 import { clsx } from "clsx"
-import { Brain } from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -19,12 +21,19 @@ const navItems = [
   { href: "/ventas", label: "Ventas", icon: ShoppingCart },
   { href: "/compras", label: "Compras", icon: Truck },
   { href: "/reportes", label: "Reportes", icon: BarChart3 },
-  { href: "/configuracion", label: "Configuración", icon: Settings },
   { href: "/inteligencia", label: "Inteligencia IA", icon: Brain },
+  { href: "/configuracion", label: "Configuración", icon: Settings },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { data: session } = useSession()
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false })
+    router.push("/login")
+  }
 
   return (
     <aside className="w-64 border-r flex flex-col" style={{ background: "var(--sidebar)", borderColor: "var(--sidebar-border)" }}>
@@ -55,10 +64,26 @@ export default function Sidebar() {
           )
         })}
       </nav>
-      
 
-      <div className="p-4 border-t" style={{ borderColor: "var(--sidebar-border)", color: "var(--muted-foreground)" }}>
-        <p className="text-xs">ModaSoft v1.0</p>
+      <div className="p-4 border-t space-y-3" style={{ borderColor: "var(--sidebar-border)" }}>
+        {session?.user && (
+          <div className="px-2">
+            <p className="text-sm font-medium" style={{ color: "var(--sidebar-foreground)" }}>
+              {session.user.name}
+            </p>
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              {(session.user as any).role || "Usuario"}
+            </p>
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <LogOut size={16} />
+          Cerrar sesión
+        </button>
       </div>
     </aside>
   )
