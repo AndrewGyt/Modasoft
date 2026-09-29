@@ -15,6 +15,9 @@ import {
 import { clsx } from "clsx"
 import { useSession, signOut } from "next-auth/react"
 
+import { CreditCard } from "lucide-react"
+
+
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inventario", label: "Inventario", icon: Package },
@@ -23,6 +26,7 @@ const navItems = [
   { href: "/reportes", label: "Reportes", icon: BarChart3 },
   { href: "/inteligencia", label: "Inteligencia IA", icon: Brain },
   { href: "/configuracion", label: "Configuración", icon: Settings },
+  { href: "/creditos", label: "Créditos", icon: CreditCard },
 ]
 
 export default function Sidebar() {

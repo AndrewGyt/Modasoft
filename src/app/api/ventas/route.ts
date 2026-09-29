@@ -75,4 +75,5 @@ export async function POST(req: Request) {
     console.error(error)
     return NextResponse.json({ error: "Error al registrar venta" }, { status: 500 })
   }
+  
 }

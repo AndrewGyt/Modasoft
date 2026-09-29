@@ -36,6 +36,12 @@ export default function NuevaVentaPage() {
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [loading, setLoading] = useState(false)
   const [clienteFiel, setClienteFiel] = useState(false)
+  const [creditoData, setCreditoData] = useState({
+  clienteNombre: "",
+  clienteTelefono: "",
+  montoPagado: "",
+  fechaVencimiento: "",
+})
 
   const subtotal = carrito.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0)
   const total = Math.max(0, subtotal - descuento)
@@ -109,28 +115,46 @@ export default function NuevaVentaPage() {
   }
 
   const handleRegistrarVenta = async () => {
-    if (carrito.length === 0) return
-    setLoading(true)
-    try {
-      const res = await fetch("/api/ventas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: carrito.map((i) => ({
-            varianteId: i.varianteId,
-            cantidad: i.cantidad,
-            precioUnitario: i.precioUnitario,
-          })),
-          total,
-          descuento,
-          metodoPago,
-        }),
-      })
-      if (res.ok) router.push("/ventas")
-    } finally {
-      setLoading(false)
+  if (carrito.length === 0) return
+  setLoading(true)
+  try {
+    const res = await fetch("/api/ventas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: carrito.map((i) => ({
+          varianteId: i.varianteId,
+          cantidad: i.cantidad,
+          precioUnitario: i.precioUnitario,
+        })),
+        total,
+        descuento,
+        metodoPago,
+      }),
+    })
+
+    if (res.ok) {
+      const ventaCreada = await res.json()
+      if (metodoPago === "credito") {
+        await fetch("/api/creditos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ventaId: ventaCreada.id,
+            clienteNombre: creditoData.clienteNombre,
+            clienteTelefono: creditoData.clienteTelefono,
+            montoTotal: total,
+            montoPagado: parseFloat(creditoData.montoPagado) || 0,
+            fechaVencimiento: creditoData.fechaVencimiento,
+          }),
+        })
+      }
+      router.push("/ventas")
     }
+  } finally {
+    setLoading(false)
   }
+}
 
   const inputStyle = {
     background: "var(--input)",
@@ -289,7 +313,42 @@ export default function NuevaVentaPage() {
             <option value="transferencia">Transferencia</option>
             <option value="qr">QR</option>
             <option value="tarjeta">Tarjeta</option>
+            <option value="credito">Crédito</option>
+          
+            
           </select>
+
+                  {metodoPago === "credito" && (
+          <div className="space-y-2 p-3 rounded-lg" style={{ background: "var(--muted)" }}>
+            <p className="text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>DATOS DEL CRÉDITO</p>
+            <input
+              placeholder="Nombre del cliente *"
+              value={creditoData.clienteNombre}
+              onChange={(e) => setCreditoData({ ...creditoData, clienteNombre: e.target.value })}
+              style={{ ...inputStyle, width: "100%", marginBottom: "6px" }}
+            />
+            <input
+              placeholder="Teléfono (opcional)"
+              value={creditoData.clienteTelefono}
+              onChange={(e) => setCreditoData({ ...creditoData, clienteTelefono: e.target.value })}
+              style={{ ...inputStyle, width: "100%", marginBottom: "6px" }}
+            />
+            <input
+              placeholder="Monto inicial (abono)"
+              type="number"
+              value={creditoData.montoPagado}
+              onChange={(e) => setCreditoData({ ...creditoData, montoPagado: e.target.value })}
+              style={{ ...inputStyle, width: "100%", marginBottom: "6px" }}
+            />
+            <input
+              type="date"
+              value={creditoData.fechaVencimiento}
+              onChange={(e) => setCreditoData({ ...creditoData, fechaVencimiento: e.target.value })}
+              style={{ ...inputStyle, width: "100%" }}
+            />
+          </div>
+        )}
+          
 
           <button
             onClick={handleRegistrarVenta}
