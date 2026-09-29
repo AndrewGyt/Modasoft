@@ -20,6 +20,7 @@ model Tenant {
   ventas      Venta[]
   ordenes     OrdenCompra[]
   clientes    Cliente[]
+  creditos    Credito[]
 }
 
 model Usuario {
@@ -137,6 +138,7 @@ model Venta {
   usuario  Usuario        @relation(fields: [usuarioId], references: [id])
   cliente  Cliente?       @relation(fields: [clienteId], references: [id])
   detalles DetalleVenta[]
+  credito  Credito?       
 }
 
 model DetalleVenta {
@@ -189,9 +191,11 @@ model Cliente {
   nombre   String
   telefono String?
   email    String?
+  
 
   tenant Tenant  @relation(fields: [tenantId], references: [id])
   ventas Venta[]
+  creditos    Credito[]
 
   createdAt DateTime @default(now())
 }
@@ -242,4 +246,40 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Credito {
+  id              String    @id @default(cuid())
+  tenantId        String
+  clienteId       String
+  ventaId         String    @unique
+  montoTotal      Float
+  montoPagado     Float     @default(0)
+  fechaVencimiento DateTime
+  estado          EstadoCredito @default(PENDIENTE)
+  notas           String?
+  createdAt       DateTime  @default(now())
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  cliente  Cliente       @relation(fields: [clienteId], references: [id])
+  venta    Venta         @relation(fields: [ventaId], references: [id])
+  pagos    PagoCredito[]
+}
+
+model PagoCredito {
+  id         String   @id @default(cuid())
+  creditoId  String
+  monto      Float
+  metodoPago String
+  notas      String?
+  createdAt  DateTime @default(now())
+
+  credito Credito @relation(fields: [creditoId], references: [id])
+}
+
+enum EstadoCredito {
+  PENDIENTE
+  PARCIAL
+  PAGADO
+  VENCIDO
 }
