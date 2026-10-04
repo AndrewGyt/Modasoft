@@ -36,6 +36,7 @@ export default function CreditosPage() {
   const [pago, setPago] = useState({ monto: "", metodoPago: "efectivo", notas: "" })
   const [registrandoPago, setRegistrandoPago] = useState(false)
   const [errorPago, setErrorPago] = useState("")
+  const [filtroNombre, setFiltroNombre] = useState("")
 
   const cargarCreditos = () => {
     fetch("/api/creditos")
@@ -117,7 +118,22 @@ export default function CreditosPage() {
           </p>
         </div>
       </div>
-
+      <div style={{ maxWidth: "320px" }}>
+        <input
+          placeholder="Buscar por nombre de cliente..."
+          value={filtroNombre}
+          onChange={(e) => setFiltroNombre(e.target.value)}
+          style={{
+            background: "var(--input)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--foreground)",
+            padding: "8px 12px",
+            width: "100%",
+            fontSize: "14px",
+          }}
+        />
+      </div>
       {loading ? (
         <p style={{ color: "var(--muted-foreground)" }}>Cargando...</p>
       ) : creditos.length === 0 ? (
@@ -130,10 +146,15 @@ export default function CreditosPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {creditos.map((c) => {
-            const Icon = estadoIcon[c.estado]
-            const montoRestante = c.montoTotal - c.montoPagado
-            const porcentaje = (c.montoPagado / c.montoTotal) * 100
+          {creditos
+            .filter((c) =>
+              filtroNombre === "" ||
+              c.cliente.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
+            )
+            .map((c) => {
+              const Icon = estadoIcon[c.estado]
+              const montoRestante = c.montoTotal - c.montoPagado
+              const porcentaje = (c.montoPagado / c.montoTotal) * 100
 
             return (
               <div
