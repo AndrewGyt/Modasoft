@@ -8,137 +8,184 @@ export async function GET() {
     const hoy = new Date()
     const inicio90Dias = new Date(hoy.getTime() - 90 * 24 * 60 * 60 * 1000)
 
-    const [detallesVentas, variantes] = await Promise.all([
+    const [detallesVentas, variantes, ordenes] = await Promise.all([
       db.detalleVenta.findMany({
         where: { venta: { tenantId: TENANT_ID, createdAt: { gte: inicio90Dias } } },
         include: {
-          venta: { select: { createdAt: true } },
+          venta: { select: { createdAt: true, metodoPago: true, total: true } },
           variante: {
-            include: { producto: { include: { categoria: true } } },
+            include: { producto: { include: { categoria: true, proveedor: true } } },
           },
         },
+        orderBy: { venta: { createdAt: "asc" } },
       }),
       db.variante.findMany({
         where: { producto: { tenantId: TENANT_ID } },
         include: { producto: { include: { categoria: true, proveedor: true } } },
       }),
+      db.ordenCompra.findMany({
+        where: { tenantId: TENANT_ID },
+        include: { proveedor: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
     ])
 
     const ventasPorCategoria: Record<string, { cantidad: number; total: number }> = {}
+    const ventasPorProducto: Record<string, { nombre: string; cantidad: number; total: number; categoria: string }> = {}
+    const ventasPorMes: Record<string, number> = {}
+    const ventasPorMetodoPago: Record<string, number> = {}
+
     detallesVentas.forEach((d) => {
       const cat = d.variante.producto.categoria.nombre
+      const prod = d.variante.producto.nombre
+      const mes = new Date(d.venta.createdAt).toLocaleDateString("es-BO", { month: "long", year: "numeric" })
+      const metodo = d.venta.metodoPago
+
       if (!ventasPorCategoria[cat]) ventasPorCategoria[cat] = { cantidad: 0, total: 0 }
       ventasPorCategoria[cat].cantidad += d.cantidad
       ventasPorCategoria[cat].total += d.cantidad * d.precioUnitario
+
+      if (!ventasPorProducto[prod]) ventasPorProducto[prod] = { nombre: prod, cantidad: 0, total: 0, categoria: cat }
+      ventasPorProducto[prod].cantidad += d.cantidad
+      ventasPorProducto[prod].total += d.cantidad * d.precioUnitario
+
+      ventasPorMes[mes] = (ventasPorMes[mes] || 0) + d.cantidad * d.precioUnitario
+      ventasPorMetodoPago[metodo] = (ventasPorMetodoPago[metodo] || 0) + 1
     })
 
     const stockBajo = variantes.filter((v) => v.stockActual <= v.stockMinimo)
-    const topCat = Object.entries(ventasPorCategoria).sort((a, b) => b[1].total - a[1].total)
+    const stockCritico = variantes.filter((v) => v.stockActual === 0)
+    const totalVentas = detallesVentas.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0)
+    const valorInventario = variantes.reduce((acc, v) => acc + v.stockActual * v.producto.precioVenta, 0)
+    const costoInventario = variantes.reduce((acc, v) => acc + v.stockActual * v.producto.precioCompra, 0)
 
-    const usandoApiReal = !!process.env.ANTHROPIC_API_KEY
+    const contexto = {
+      tienda: "Tendance - ropa femenina clase media-alta, Cochabamba Bolivia",
+      periodo: "últimos 90 días",
+      totalVentasBs: totalVentas.toFixed(2),
+      ventasPorCategoria,
+      topProductos: Object.values(ventasPorProducto).sort((a, b) => b.total - a.total).slice(0, 10),
+      ventasPorMes,
+      ventasPorMetodoPago,
+      stockBajo: stockBajo.map((v) => ({
+        producto: v.producto.nombre,
+        categoria: v.producto.categoria.nombre,
+        talla: v.talla,
+        stockActual: v.stockActual,
+        stockMinimo: v.stockMinimo,
+        leadTimeDias: v.producto.proveedor.leadTimeDias,
+        precioVenta: v.producto.precioVenta,
+      })),
+      stockCritico: stockCritico.map((v) => ({
+        producto: v.producto.nombre,
+        talla: v.talla,
+      })),
+      valorInventarioBs: valorInventario.toFixed(2),
+      costoInventarioBs: costoInventario.toFixed(2),
+      margenPotencialBs: (valorInventario - costoInventario).toFixed(2),
+      totalProductos: variantes.length,
+    }
 
-    if (usandoApiReal) {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": process.env.ANTHROPIC_API_KEY!,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 2000,
-          messages: [{ role: "user", content: `Analiza estos datos de tienda de ropa boliviana y responde SOLO JSON: ${JSON.stringify({ ventasPorCategoria, stockBajo: stockBajo.length })}` }],
-        }),
-      })
-      const data = await response.json()
-      const texto = data.content?.[0]?.text || "{}"
+    const prompt = `Eres un analista experto en retail de moda femenina en Bolivia. Analiza estos datos reales de "Tendance" y genera un análisis profundo y específico. NO uses datos genéricos, usa los números exactos que te proporciono.
+
+DATOS REALES DE TENDANCE:
+${JSON.stringify(contexto, null, 2)}
+
+Responde ÚNICAMENTE con un objeto JSON válido sin texto adicional ni backticks markdown. IMPORTANTE: usa punto como separador decimal y NO uses separadores de miles en los números (ejemplo: 25280.50 no 25.280,50). Los textos descriptivos pueden estar en español normal. IMPORTANTE: Sé conciso. Máximo 4 items en prediccionDemanda, 4 en alertas, 5 en recomendacionesStock, 3 en insightsMercado. Textos cortos de máximo 100 caracteres por campo:
+{
+  "resumen": "párrafo específico con los hallazgos más importantes usando los números reales",
+  "prediccionDemanda": [
+    {
+      "categoria": "nombre exacto de la categoría",
+      "tendencia": "CRECIENTE|ESTABLE|DECRECIENTE",
+      "confianza": "ALTA|MEDIA|BAJA",
+      "recomendacion": "acción específica con números concretos",
+      "cantidadSugerida": numero
+    }
+  ],
+  "alertas": [
+    {
+      "tipo": "CRITICO|ADVERTENCIA|OPORTUNIDAD",
+      "titulo": "título corto y específico",
+      "descripcion": "descripción detallada con números reales",
+      "accion": "acción inmediata y concreta"
+    }
+  ],
+  "recomendacionesStock": [
+    {
+      "producto": "nombre exacto del producto",
+      "accion": "REPONER|LIQUIDAR|MANTENER",
+      "cantidad": numero,
+      "razon": "razón específica basada en los datos"
+    }
+  ],
+  "insightsMercado": [
+    {
+      "titulo": "título del insight",
+      "descripcion": "descripción basada en patrones reales detectados",
+      "impacto": "ALTO|MEDIO|BAJO"
+    }
+  ],
+  "prediccionProximoMes": {
+    "ventasEstimadas": numero,
+    "categoriaEstrella": "categoría con mayor potencial basada en datos",
+    "riesgoStockout": "descripción específica del riesgo"
+  }
+}`
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY!,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 6000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error("Anthropic API error:", data)
+      throw new Error(data.error?.message || "Error en API de Anthropic")
+    }
+
+    const texto = data.content?.[0]?.text || ""
+    console.log("Respuesta Claude (primeros 200 chars):", texto.slice(0, 200))
+
+    let analisis
+    try {
+      const textoLimpio = texto
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim()
+      analisis = JSON.parse(textoLimpio)
+    } catch {
       try {
-        return NextResponse.json({ analisis: JSON.parse(texto), modo: "ia-real" })
-      } catch {
-        // si falla el parse, cae al mock
+        const match = texto.match(/\{[\s\S]*\}/)
+        if (match) {
+          const textoMatch = match[0]
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+            .replace(/,(\s*[}\]])/g, "$1")
+          analisis = JSON.parse(textoMatch)
+        } else {
+          throw new Error("No se pudo parsear respuesta")
+        }
+      } catch (e2) {
+        console.error("Parse error:", e2)
+        console.error("Texto recibido:", texto.slice(0, 500))
+        throw new Error("No se pudo parsear respuesta de IA")
       }
     }
 
-    // MODO DEMO — análisis generado con los datos reales de la tienda
-    const analisis = {
-      resumen: `Análisis de Tendance basado en ${detallesVentas.length} transacciones de los últimos 90 días. ${topCat.length > 0 ? `La categoría más vendida es ${topCat[0][0]} con Bs. ${topCat[0][1].total.toFixed(2)} en ventas.` : "Aún no hay suficientes datos de ventas para un análisis completo."} ${stockBajo.length > 0 ? `Se detectaron ${stockBajo.length} productos con stock bajo que requieren atención inmediata.` : "El stock general está en niveles saludables."}`,
-      prediccionDemanda: topCat.slice(0, 4).map(([cat, datos], i) => ({
-        categoria: cat,
-        tendencia: i === 0 ? "CRECIENTE" : i === topCat.length - 1 ? "DECRECIENTE" : "ESTABLE",
-        confianza: datos.cantidad > 10 ? "ALTA" : datos.cantidad > 5 ? "MEDIA" : "BAJA",
-        recomendacion: i === 0
-          ? `Aumentar stock de ${cat} — es tu categoría estrella`
-          : `Mantener stock actual de ${cat} y monitorear`,
-        cantidadSugerida: Math.max(5, Math.round(datos.cantidad * 1.2)),
-      })),
-      alertas: [
-        ...stockBajo.slice(0, 3).map((v) => ({
-          tipo: v.stockActual === 0 ? "CRITICO" : "ADVERTENCIA" as "CRITICO" | "ADVERTENCIA",
-          titulo: `Stock ${v.stockActual === 0 ? "agotado" : "bajo"}: ${v.producto.nombre}`,
-          descripcion: `${v.talla} ${v.color} tiene ${v.stockActual} unidades (mínimo: ${v.stockMinimo}). Lead time del proveedor: ${v.producto.proveedor.leadTimeDias} días.`,
-          accion: `Realizar orden de compra inmediata para reponer al menos ${v.stockMinimo * 2} unidades`,
-        })),
-        ...(topCat.length > 0 ? [{
-          tipo: "OPORTUNIDAD" as "OPORTUNIDAD",
-          titulo: `Alta demanda en ${topCat[0][0]}`,
-          descripcion: `${topCat[0][0]} representa tu categoría más vendida. Considera ampliar el catálogo.`,
-          accion: "Contactar proveedores para nuevos modelos en esta categoría",
-        }] : []),
-      ],
-      recomendacionesStock: [
-        ...stockBajo.slice(0, 5).map((v) => ({
-          producto: `${v.producto.nombre} (${v.talla} ${v.color})`,
-          accion: "REPONER" as "REPONER",
-          cantidad: v.stockMinimo * 3,
-          razon: `Stock actual (${v.stockActual}) por debajo del mínimo (${v.stockMinimo})`,
-        })),
-        ...variantes
-          .filter((v) => v.stockActual > v.stockMinimo * 5)
-          .slice(0, 2)
-          .map((v) => ({
-            producto: `${v.producto.nombre} (${v.talla} ${v.color})`,
-            accion: "LIQUIDAR" as "LIQUIDAR",
-            cantidad: Math.floor(v.stockActual * 0.3),
-            razon: "Stock excesivo — aplicar descuento para rotar inventario",
-          })),
-      ],
-      insightsMercado: [
-        {
-          titulo: "Segmento clase media-alta",
-          descripcion: "Tendance opera en un segmento premium en Bolivia. Los precios deben reflejar calidad y exclusividad para mantener el posicionamiento.",
-          impacto: "ALTO" as "ALTO",
-        },
-        {
-          titulo: "Temporadas en Bolivia",
-          descripcion: "El mercado boliviano tiene patrones estacionales marcados. Verano (oct-mar) y temporada de fiestas (mayo-jun) son picos de ventas en ropa femenina.",
-          impacto: "ALTO" as "ALTO",
-        },
-        {
-          titulo: "Método de pago preferido",
-          descripcion: "Analizar qué métodos de pago prefieren tus clientes para optimizar la experiencia de compra.",
-          impacto: "MEDIO" as "MEDIO",
-        },
-        {
-          titulo: "Rotación de inventario",
-          descripcion: "En moda femenina, las prendas con más de 60 días sin venderse deben liquidarse para dar paso a nueva colección.",
-          impacto: "MEDIO" as "MEDIO",
-        },
-      ],
-      prediccionProximoMes: {
-        ventasEstimadas: Math.round(
-          detallesVentas.reduce((acc, d) => acc + d.cantidad * d.precioUnitario, 0) / 3 * 1.1
-        ),
-        categoriaEstrella: topCat[0]?.[0] || "Sin datos suficientes",
-        riesgoStockout: stockBajo.length > 0
-          ? `${stockBajo.length} productos en riesgo de agotarse en los próximos días`
-          : "Riesgo bajo — stock en niveles saludables",
-      },
-    }
-
-    return NextResponse.json({ analisis, modo: "demo" })
+    return NextResponse.json({ analisis, modo: "ia-real", contexto })
   } catch (error) {
     console.error(error)
-    return NextResponse.json({ error: "Error en análisis" }, { status: 500 })
+    return NextResponse.json({ error: "Error en análisis IA" }, { status: 500 })
   }
 }
