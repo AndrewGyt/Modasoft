@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Brain, TrendingUp, AlertTriangle, Package, Lightbulb, RefreshCw } from "lucide-react"
 import ChatIA from "@/components/modules/ChatIA"
 import OrdenSugerida from "@/components/modules/OrdenSugerida"
+import ProductosMuertos from "@/components/modules/ProductosMuertos"
 
 interface Analisis {
   resumen: string
@@ -393,6 +394,7 @@ export default function InteligenciaPage() {
           )}
         </div>
       )}
+      <ProductosMuertos />
       <OrdenSugerida />
       <ChatIA />
     </div>
