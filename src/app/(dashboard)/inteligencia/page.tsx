@@ -5,6 +5,7 @@ import { Brain, TrendingUp, AlertTriangle, Package, Lightbulb, RefreshCw } from 
 import ChatIA from "@/components/modules/ChatIA"
 import OrdenSugerida from "@/components/modules/OrdenSugerida"
 import ProductosMuertos from "@/components/modules/ProductosMuertos"
+import PrediccionTemporada from "@/components/modules/PrediccionTemporada"
 
 interface Analisis {
   resumen: string
@@ -394,6 +395,7 @@ export default function InteligenciaPage() {
           )}
         </div>
       )}
+      <PrediccionTemporada />
       <ProductosMuertos />
       <OrdenSugerida />
       <ChatIA />
