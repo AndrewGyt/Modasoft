@@ -6,6 +6,7 @@ import ChatIA from "@/components/modules/ChatIA"
 import OrdenSugerida from "@/components/modules/OrdenSugerida"
 import ProductosMuertos from "@/components/modules/ProductosMuertos"
 import PrediccionTemporada from "@/components/modules/PrediccionTemporada"
+import Rentabilidad from "@/components/modules/Rentabilidad"
 
 interface Analisis {
   resumen: string
@@ -395,6 +396,7 @@ export default function InteligenciaPage() {
           )}
         </div>
       )}
+      <Rentabilidad />
       <PrediccionTemporada />
       <ProductosMuertos />
       <OrdenSugerida />
