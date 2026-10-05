@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Brain, TrendingUp, AlertTriangle, Package, Lightbulb, RefreshCw } from "lucide-react"
 import ChatIA from "@/components/modules/ChatIA"
+import OrdenSugerida from "@/components/modules/OrdenSugerida"
 
 interface Analisis {
   resumen: string
@@ -392,6 +393,7 @@ export default function InteligenciaPage() {
           )}
         </div>
       )}
+      <OrdenSugerida />
       <ChatIA />
     </div>
   )
