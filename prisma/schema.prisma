@@ -93,17 +93,24 @@ model Producto {
 }
 
 model Variante {
-  id          String @id @default(cuid())
+  id          String         @id @default(cuid())
   productoId  String
   talla       String
   color       String
-  stockActual Int    @default(0)
-  stockMinimo Int    @default(5)
+  stockActual Int            @default(0)
+  stockMinimo Int            @default(5)
+  estado      EstadoVariante @default(ACTIVA)
+  motivoBaja  String?
 
   producto     Producto              @relation(fields: [productoId], references: [id])
   movimientos  MovimientoInventario[]
   detallesVenta DetalleVenta[]
   detallesOrden DetalleOrdenCompra[]
+}
+
+enum EstadoVariante {
+  ACTIVA
+  BAJA
 }
 
 model MovimientoInventario {

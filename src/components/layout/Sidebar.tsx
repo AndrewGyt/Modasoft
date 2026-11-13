@@ -11,6 +11,7 @@ import {
   Settings,
   Brain,
   LogOut,
+  Users,
 } from "lucide-react"
 import { clsx } from "clsx"
 import { useSession, signOut } from "next-auth/react"
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/inteligencia", label: "Inteligencia IA", icon: Brain },
   { href: "/configuracion", label: "Configuración", icon: Settings },
   { href: "/creditos", label: "Créditos", icon: CreditCard },
+  { href: "/clientes", label: "Clientes", icon: Users },
 ]
 
 export default function Sidebar() {

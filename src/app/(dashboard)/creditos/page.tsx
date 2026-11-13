@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CreditCard, AlertTriangle, CheckCircle, Clock } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { CreditCard, AlertTriangle, CheckCircle, Clock, FileText } from "lucide-react"
 
 interface Credito {
   id: string
@@ -30,6 +31,7 @@ const estadoIcon = {
 }
 
 export default function CreditosPage() {
+  const router = useRouter()
   const [creditos, setCreditos] = useState<Credito[]>([])
   const [loading, setLoading] = useState(true)
   const [creditoSeleccionado, setCreditoSeleccionado] = useState<Credito | null>(null)
@@ -46,9 +48,17 @@ export default function CreditosPage() {
 
   useEffect(() => { cargarCreditos() }, [])
 
-  const totalPendiente = creditos
+  const creditosFiltrados = creditos.filter((c) =>
+    filtroNombre === "" ||
+    c.cliente.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
+  )
+
+  const totalPendiente = creditosFiltrados
     .filter((c) => c.estado !== "PAGADO")
     .reduce((acc, c) => acc + (c.montoTotal - c.montoPagado), 0)
+
+  const creditosActivos = creditosFiltrados.filter((c) => c.estado !== "PAGADO").length
+  const creditosVencidos = creditosFiltrados.filter((c) => c.estado === "VENCIDO").length
 
   const handleRegistrarPago = async () => {
   if (!creditoSeleccionado || !pago.monto) return
@@ -108,13 +118,13 @@ export default function CreditosPage() {
         <div className="rounded-xl border p-5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
           <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Créditos activos</p>
           <p className="text-2xl font-bold mt-1" style={{ color: "var(--foreground)" }}>
-            {creditos.filter((c) => c.estado !== "PAGADO").length}
+            {creditosActivos}
           </p>
         </div>
         <div className="rounded-xl border p-5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
           <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Vencidos</p>
           <p className="text-2xl font-bold mt-1" style={{ color: "#EF4444" }}>
-            {creditos.filter((c) => c.estado === "VENCIDO").length}
+            {creditosVencidos}
           </p>
         </div>
       </div>
@@ -146,12 +156,7 @@ export default function CreditosPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {creditos
-            .filter((c) =>
-              filtroNombre === "" ||
-              c.cliente.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
-            )
-            .map((c) => {
+          {creditosFiltrados.map((c) => {
               const Icon = estadoIcon[c.estado]
               const montoRestante = c.montoTotal - c.montoPagado
               const porcentaje = (c.montoPagado / c.montoTotal) * 100
@@ -217,23 +222,42 @@ export default function CreditosPage() {
                   <p className="text-xs italic" style={{ color: "var(--muted-foreground)" }}>{c.notas}</p>
                 )}
 
-                {c.estado !== "PAGADO" && (
+                <div className="flex gap-2">
+                  {c.estado !== "PAGADO" && (
+                    <button
+                      onClick={() => setCreditoSeleccionado(c)}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px solid #10B981",
+                        background: "transparent",
+                        color: "#10B981",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Registrar pago
+                    </button>
+                  )}
                   <button
-                    onClick={() => setCreditoSeleccionado(c)}
+                    onClick={() => router.push(`/creditos/${c.id}/nota`)}
                     style={{
-                      padding: "8px 16px",
+                      padding: "8px 14px",
                       borderRadius: "var(--radius-md)",
-                      border: "1px solid #10B981",
+                      border: "1px solid var(--border)",
                       background: "transparent",
-                      color: "#10B981",
+                      color: "var(--muted-foreground)",
                       fontSize: "13px",
-                      fontWeight: 500,
                       cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                     }}
                   >
-                    Registrar pago
+                    <FileText size={14} /> Nota
                   </button>
-                )}
+                </div>
               </div>
             )
           })}

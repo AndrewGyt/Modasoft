@@ -12,6 +12,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         color: body.color,
         stockActual: parseInt(body.stockActual),
         stockMinimo: parseInt(body.stockMinimo),
+        ...(body.estado !== undefined && { estado: body.estado }),
+        ...(body.motivoBaja !== undefined && { motivoBaja: body.motivoBaja ?? null }),
       },
     })
     return NextResponse.json(variante)

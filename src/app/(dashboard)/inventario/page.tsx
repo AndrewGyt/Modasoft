@@ -15,7 +15,8 @@ export default async function InventarioPage() {
     orderBy: { producto: { nombre: "asc" } },
   })
 
-  const stockBajo = variantes.filter((v) => v.stockActual <= v.stockMinimo)
+  const variantesActivas = variantes.filter((v) => v.estado !== "BAJA")
+  const stockBajo = variantesActivas.filter((v) => v.stockActual <= v.stockMinimo)
 
   return (
     <div className="space-y-6">
@@ -25,7 +26,12 @@ export default async function InventarioPage() {
             Inventario
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
-            {variantes.length} variantes registradas
+            {variantesActivas.length} variantes activas
+            {variantes.length > variantesActivas.length && (
+              <span style={{ color: "var(--muted-foreground)", marginLeft: 6 }}>
+                · {variantes.length - variantesActivas.length} dadas de baja
+              </span>
+            )}
           </p>
         </div>
         <Link
@@ -84,12 +90,13 @@ export default async function InventarioPage() {
               </tr>
             ) : (
               variantes.map((v) => {
-                const bajo = v.stockActual <= v.stockMinimo
+                const esBaja = v.estado === "BAJA"
+                const bajo = !esBaja && v.stockActual <= v.stockMinimo
                 return (
                   <tr
                     key={v.id}
                     className="border-t transition-colors"
-                    style={{ borderColor: "var(--border)" }}
+                    style={{ borderColor: "var(--border)", opacity: esBaja ? 0.5 : 1 }}
                   >
                     <td className="px-4 py-3 font-medium" style={{ color: "var(--foreground)" }}>
                       {v.producto.nombre}
@@ -116,11 +123,11 @@ export default async function InventarioPage() {
                       <span
                         className="px-2 py-1 rounded-full text-xs font-medium"
                         style={{
-                          background: bajo ? "var(--destructive)" : "var(--primary)",
+                          background: esBaja ? "#78716c" : bajo ? "var(--destructive)" : "var(--primary)",
                           color: "var(--primary-foreground)",
                         }}
                       >
-                        {bajo ? "Stock bajo" : "OK"}
+                        {esBaja ? "BAJA" : bajo ? "Stock bajo" : "OK"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">

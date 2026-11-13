@@ -82,8 +82,22 @@ export default function EditarProductoPage() {
   const handleAgregarVariante = () => {
     setVariantes([
       ...variantes,
-      { id: `nueva-${Date.now()}`, talla: "", color: "", stockActual: 0, stockMinimo: 5, nueva: true },
+      { id: `nueva-${Date.now()}`, talla: "", color: "", stockActual: 0, stockMinimo: 5, estado: "ACTIVA", motivoBaja: null, nueva: true },
     ])
+  }
+
+  const handleBajaVariante = async (index: number) => {
+    const motivo = prompt("Motivo de baja (ej: deterioro, devolución):")
+    if (motivo === null) return
+    const updated = [...variantes]
+    updated[index] = { ...updated[index], estado: "BAJA", motivoBaja: motivo || "Sin motivo" }
+    setVariantes(updated)
+  }
+
+  const handleReactivarVariante = (index: number) => {
+    const updated = [...variantes]
+    updated[index] = { ...updated[index], estado: "ACTIVA", motivoBaja: null }
+    setVariantes(updated)
   }
 
   const handleEliminarProducto = async () => {
@@ -222,63 +236,116 @@ export default function EditarProductoPage() {
         {variantes.map((v, i) => (
           <div
             key={v.id}
-            className="grid grid-cols-5 gap-3 items-end p-3 rounded-lg"
-            style={{ background: "var(--muted)", borderRadius: "var(--radius-md)" }}
+            className="p-3 rounded-lg space-y-3"
+            style={{
+              background: v.estado === "BAJA" ? "rgba(239,68,68,0.06)" : "var(--muted)",
+              borderRadius: "var(--radius-md)",
+              border: v.estado === "BAJA" ? "1px solid rgba(239,68,68,0.3)" : "1px solid transparent",
+            }}
           >
-            <div>
-              <label style={labelStyle}>Talla</label>
-              <select
-                value={v.talla}
-                onChange={(e) => handleVarianteChange(i, "talla", e.target.value)}
-                style={inputStyle}
-              >
-                <option value="">-</option>
-                <option>XS</option><option>S</option><option>M</option>
-                <option>L</option><option>XL</option><option>XXL</option>
-                <option>Única</option>
-              </select>
+            {v.estado === "BAJA" && (
+              <div className="flex items-center gap-2 text-xs" style={{ color: "#EF4444" }}>
+                <span className="font-bold">⚠ BAJA</span>
+                {v.motivoBaja && <span>— {v.motivoBaja}</span>}
+              </div>
+            )}
+            <div className="grid grid-cols-5 gap-3 items-end">
+              <div>
+                <label style={labelStyle}>Talla</label>
+                <select
+                  value={v.talla}
+                  onChange={(e) => handleVarianteChange(i, "talla", e.target.value)}
+                  style={{ ...inputStyle, opacity: v.estado === "BAJA" ? 0.6 : 1 }}
+                  disabled={v.estado === "BAJA"}
+                >
+                  <option value="">-</option>
+                  <option>XS</option><option>S</option><option>M</option>
+                  <option>L</option><option>XL</option><option>XXL</option>
+                  <option>T/U</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Color</label>
+                <input
+                  value={v.color}
+                  onChange={(e) => handleVarianteChange(i, "color", e.target.value)}
+                  style={{ ...inputStyle, opacity: v.estado === "BAJA" ? 0.6 : 1 }}
+                  disabled={v.estado === "BAJA"}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Stock</label>
+                <input
+                  type="number"
+                  value={v.stockActual}
+                  onChange={(e) => handleVarianteChange(i, "stockActual", e.target.value)}
+                  style={{ ...inputStyle, opacity: v.estado === "BAJA" ? 0.6 : 1 }}
+                  disabled={v.estado === "BAJA"}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Mínimo</label>
+                <input
+                  type="number"
+                  value={v.stockMinimo}
+                  onChange={(e) => handleVarianteChange(i, "stockMinimo", e.target.value)}
+                  style={{ ...inputStyle, opacity: v.estado === "BAJA" ? 0.6 : 1 }}
+                  disabled={v.estado === "BAJA"}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                {v.estado !== "BAJA" ? (
+                  <button
+                    onClick={() => handleBajaVariante(i)}
+                    style={{
+                      padding: "7px 10px",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid #F59E0B",
+                      background: "transparent",
+                      color: "#F59E0B",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Dar de baja
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleReactivarVariante(i)}
+                    style={{
+                      padding: "7px 10px",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid #10B981",
+                      background: "transparent",
+                      color: "#10B981",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Reactivar
+                  </button>
+                )}
+                {!v.nueva && v.estado !== "BAJA" && (
+                  <button
+                    onClick={() => handleEliminarVariante(v.id)}
+                    style={{
+                      padding: "7px 10px",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--destructive)",
+                      background: "transparent",
+                      color: "var(--destructive)",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                )}
+              </div>
             </div>
-            <div>
-              <label style={labelStyle}>Color</label>
-              <input
-                value={v.color}
-                onChange={(e) => handleVarianteChange(i, "color", e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Stock</label>
-              <input
-                type="number"
-                value={v.stockActual}
-                onChange={(e) => handleVarianteChange(i, "stockActual", e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Mínimo</label>
-              <input
-                type="number"
-                value={v.stockMinimo}
-                onChange={(e) => handleVarianteChange(i, "stockMinimo", e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <button
-              onClick={() => handleEliminarVariante(v.id)}
-              style={{
-                padding: "8px",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--destructive)",
-                background: "transparent",
-                color: "var(--destructive)",
-                fontSize: "13px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Eliminar
-            </button>
           </div>
         ))}
       </div>

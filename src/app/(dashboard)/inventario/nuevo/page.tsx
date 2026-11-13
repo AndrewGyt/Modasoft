@@ -4,13 +4,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-function generarSKU(categoria: string, marca: string) {
-  const cat = categoria.slice(0, 3).toUpperCase() || "PRD"
-  const mar = marca.slice(0, 2).toUpperCase() || "XX"
-  const num = Math.floor(10000 + Math.random() * 90000)
-  return `${cat}-${mar}-${num}`
-}
-
 const MONEDAS = [
   { codigo: "BOB", nombre: "Boliviano (Bs.)", simbolo: "Bs." },
   { codigo: "BRL", nombre: "Real brasileño (R$)", simbolo: "R$" },
@@ -45,13 +38,6 @@ export default function NuevoProductoPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     const updated = { ...form, [name]: value }
-
-    if (name === "categoria" || name === "marca") {
-      updated.sku = generarSKU(
-        name === "categoria" ? value : form.categoria,
-        name === "marca" ? value : form.marca
-      )
-    }
 
     if (usarImportacion && ["precioOrigen", "tipoCambio", "margenGanancia"].includes(name)) {
       const origen = parseFloat(name === "precioOrigen" ? value : updated.precioOrigen) || 0
@@ -164,26 +150,8 @@ export default function NuevoProductoPage() {
         </div>
 
         <div>
-          <label style={labelStyle}>SKU (auto-generado)</label>
-          <div className="flex gap-2">
-            <input name="sku" value={form.sku} onChange={handleChange} style={inputStyle} placeholder="Se genera al escribir categoría y marca" />
-            <button
-              onClick={() => setForm({ ...form, sku: generarSKU(form.categoria, form.marca) })}
-              type="button"
-              style={{
-                padding: "8px 14px",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--border)",
-                background: "var(--secondary)",
-                color: "var(--secondary-foreground)",
-                fontSize: "13px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Regenerar
-            </button>
-          </div>
+          <label style={labelStyle}>SKU</label>
+          <input name="sku" value={form.sku} onChange={handleChange} style={inputStyle} placeholder="Ej: BL-001" />
         </div>
       </div>
 
@@ -311,7 +279,7 @@ export default function NuevoProductoPage() {
               <option value="">Seleccionar</option>
               <option>XS</option><option>S</option><option>M</option>
               <option>L</option><option>XL</option><option>XXL</option>
-              <option>Única</option>
+              <option>T/U</option>
             </select>
           </div>
           <div>
