@@ -1,6 +1,5 @@
 "use client"
 
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -16,19 +15,20 @@ export default function NuevoProductoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [usarImportacion, setUsarImportacion] = useState(false)
+  const [errores, setErrores] = useState<string[]>([])
   const [form, setForm] = useState({
     nombre: "",
     descripcion: "",
     sku: "",
     marca: "",
-    precioCompra: "",
+    precioCompra: "0",
     precioVenta: "",
     temporada: "",
     categoria: "",
     talla: "",
     color: "",
     stockActual: "",
-    stockMinimo: "5",
+    stockMinimo: "1",
     monedaOrigen: "BRL",
     precioOrigen: "",
     tipoCambio: "",
@@ -59,7 +59,33 @@ export default function NuevoProductoPage() {
   const precioVentaCalculado = costoCalculado * (1 + parseFloat(form.margenGanancia) / 100) || 0
   const gananciaPorUnidad = precioVentaCalculado - costoCalculado || 0
 
+  const validar = () => {
+    const faltantes: string[] = []
+    if (!form.nombre.trim()) faltantes.push("Nombre del producto")
+    if (!form.sku.trim()) faltantes.push("Código (SKU)")
+    if (!form.categoria.trim()) faltantes.push("Categoría")
+    if (!form.precioVenta || parseFloat(form.precioVenta) <= 0) faltantes.push("Precio de venta")
+    if (!form.talla) faltantes.push("Talla de la variante inicial")
+    if (!form.color.trim()) faltantes.push("Color de la variante inicial")
+    if (form.stockActual === "" || form.stockActual === undefined) faltantes.push("Stock actual")
+    const actual = parseInt(form.stockActual) || 0
+    const minimo = parseInt(form.stockMinimo) || 1
+    if (minimo > actual && actual > 0) faltantes.push("Stock mínimo no puede ser mayor al stock actual")
+    if (usarImportacion) {
+      if (!form.precioOrigen || parseFloat(form.precioOrigen) <= 0) faltantes.push("Precio en moneda origen")
+      if (!form.tipoCambio || parseFloat(form.tipoCambio) <= 0) faltantes.push("Tipo de cambio")
+    }
+    return faltantes
+  }
+
   const handleSubmit = async () => {
+    const faltantes = validar()
+    if (faltantes.length > 0) {
+      setErrores(faltantes)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+      return
+    }
+    setErrores([])
     setLoading(true)
     try {
       const res = await fetch("/api/productos", {
@@ -67,6 +93,7 @@ export default function NuevoProductoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          precioCompra: usarImportacion ? parseFloat(form.precioCompra) : 0,
           monedaOrigen: usarImportacion ? form.monedaOrigen : null,
           precioOrigen: usarImportacion ? parseFloat(form.precioOrigen) : null,
           tipoCambio: usarImportacion ? parseFloat(form.tipoCambio) : null,
@@ -110,6 +137,22 @@ export default function NuevoProductoPage() {
         </p>
       </div>
 
+      {errores.length > 0 && (
+        <div
+          className="rounded-xl border p-4 space-y-1"
+          style={{ background: "#FEF2F2", borderColor: "#FCA5A5" }}
+        >
+          <p className="text-sm font-semibold" style={{ color: "#B91C1C" }}>
+            Faltan los siguientes campos obligatorios:
+          </p>
+          <ul className="list-disc list-inside space-y-0.5">
+            {errores.map((e) => (
+              <li key={e} className="text-sm" style={{ color: "#B91C1C" }}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div
         className="rounded-xl border p-6 space-y-4"
         style={{ background: "var(--card)", borderColor: "var(--border)" }}
@@ -150,8 +193,37 @@ export default function NuevoProductoPage() {
         </div>
 
         <div>
-          <label style={labelStyle}>SKU</label>
-          <input name="sku" value={form.sku} onChange={handleChange} style={inputStyle} placeholder="Ej: BL-001" />
+          <label style={labelStyle}>Código <span style={{ color: "var(--destructive)" }}>*</span></label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              name="sku"
+              value={form.sku}
+              onChange={handleChange}
+              style={{ ...inputStyle, flex: 1 }}
+              placeholder="Ej: BL-001"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const cat = form.categoria.slice(0, 2).toUpperCase() || "PR"
+                const marca = form.marca.slice(0, 2).toUpperCase() || "XX"
+                const rand = Math.floor(Math.random() * 900) + 100
+                setForm((f) => ({ ...f, sku: `${cat}-${marca}-${rand}` }))
+              }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--border)",
+                background: "var(--secondary)",
+                color: "var(--secondary-foreground)",
+                fontSize: "13px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Generar
+            </button>
+          </div>
         </div>
       </div>
 
@@ -253,15 +325,9 @@ export default function NuevoProductoPage() {
 
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label style={labelStyle}>Precio compra (Bs.)</label>
-              <input name="precioCompra" type="number" value={form.precioCompra} onChange={handleChange} style={inputStyle} placeholder="0.00" />
-            </div>
-            <div>
-              <label style={labelStyle}>Precio venta (Bs.)</label>
-              <input name="precioVenta" type="number" value={form.precioVenta} onChange={handleChange} style={inputStyle} placeholder="0.00" />
-            </div>
+          <div>
+            <label style={labelStyle}>Precio venta (Bs.) <span style={{ color: "var(--destructive)" }}>*</span></label>
+            <input name="precioVenta" type="number" value={form.precioVenta} onChange={handleChange} style={{ ...inputStyle, maxWidth: 240 }} placeholder="0.00" />
           </div>
         )}
       </div>
@@ -290,12 +356,34 @@ export default function NuevoProductoPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label style={labelStyle}>Stock actual</label>
-            <input name="stockActual" type="number" value={form.stockActual} onChange={handleChange} style={inputStyle} placeholder="0" />
+            <label style={labelStyle}>Stock actual <span style={{ color: "var(--destructive)" }}>*</span></label>
+            <input name="stockActual" type="number" min="0" value={form.stockActual} onChange={handleChange} style={inputStyle} placeholder="0" />
           </div>
           <div>
             <label style={labelStyle}>Stock mínimo</label>
-            <input name="stockMinimo" type="number" value={form.stockMinimo} onChange={handleChange} style={inputStyle} placeholder="5" />
+            <input
+              name="stockMinimo"
+              type="number"
+              min="1"
+              value={form.stockMinimo}
+              onChange={(e) => {
+                const minimo = parseInt(e.target.value) || 1
+                const actual = parseInt(form.stockActual) || 0
+                if (actual > 0 && minimo > actual) return
+                handleChange(e)
+              }}
+              style={inputStyle}
+              placeholder="1"
+            />
+            {(() => {
+              const actual = parseInt(form.stockActual) || 0
+              const minimo = parseInt(form.stockMinimo) || 1
+              return actual > 0 && minimo > actual ? (
+                <p className="text-xs mt-1" style={{ color: "var(--destructive)" }}>
+                  No puede ser mayor al stock actual ({actual})
+                </p>
+              ) : null
+            })()}
           </div>
         </div>
       </div>
