@@ -97,24 +97,24 @@ export async function POST(req: Request) {
       ws.getCell(row, 6).fill = fill
       ws.getCell(row, 6).border = thinBorder
       ws.getCell(row, 6).alignment = { horizontal: "right", vertical: "middle" }
-      // G: costo unit BS = D * tipoCambio  (tipoCambio referenciado en param)
-      ws.getCell(row, 7).value = { formula: `D${row}*$E$${dataStart + productos.length + 3}` }
+      // G: costo unit BS = precio BRL * tipo de cambio (p1 = totalRow+2)
+      ws.getCell(row, 7).value = { formula: `D${row}*$E$${dataStart + productos.length + 2}` }
       ws.getCell(row, 7).numFmt = '"Bs."#,##0.00'
       ws.getCell(row, 7).font = reg11
       ws.getCell(row, 7).fill = fill
       ws.getCell(row, 7).border = thinBorder
       ws.getCell(row, 7).alignment = { horizontal: "right", vertical: "middle" }
-      // H: referencia al margen = G*(1+margen%)
-      ws.getCell(row, 8).value = { formula: `G${row}*(1+$E$${dataStart + productos.length + 4}/100)` }
+      // H: referencia al margen = G*(1+margen%) (p2 = totalRow+3)
+      ws.getCell(row, 8).value = { formula: `G${row}*(1+$E$${dataStart + productos.length + 3}/100)` }
       ws.getCell(row, 8).numFmt = '"Bs."#,##0.00'
       ws.getCell(row, 8).font = reg11
       ws.getCell(row, 8).fill = fill
       ws.getCell(row, 8).border = thinBorder
       ws.getCell(row, 8).alignment = { horizontal: "right", vertical: "middle" }
-      // I: precio final (igual a H por defecto, usuario puede editar)
-      ws.getCell(row, 9).value = { formula: `H${row}` }
+      // I: precio final — vacío para llenado manual
+      ws.getCell(row, 9).value = ""
       ws.getCell(row, 9).numFmt = '"Bs."#,##0.00'
-      ws.getCell(row, 9).font = { ...bold11, color: { argb: "FF1F3864" } }
+      ws.getCell(row, 9).font = reg11
       ws.getCell(row, 9).fill = fill
       ws.getCell(row, 9).border = thinBorder
       ws.getCell(row, 9).alignment = { horizontal: "right", vertical: "middle" }
@@ -134,8 +134,9 @@ export async function POST(req: Request) {
     totalLabel.alignment = center
     totalLabel.border = thinBorder
 
-    ;[5, 6, 7, 8, 9].forEach(col => {
-      const letter = ["E", "F", "G", "H", "I"][col - 5]
+    // Totales: E(cant), F(total BRL), G(costo BS), H(ref margen) — I(precio final) vacío para manual
+    ;[5, 6, 7, 8].forEach(col => {
+      const letter = ["E", "F", "G", "H"][col - 5]
       const c = ws.getCell(totalRow, col)
       c.value = { formula: `SUM(${letter}${dataStart}:${letter}${totalRow - 1})` }
       c.numFmt = col === 5 ? "0" : col <= 6 ? "#,##0.00" : '"Bs."#,##0.00'
@@ -144,10 +145,15 @@ export async function POST(req: Request) {
       c.border = thinBorder
       c.alignment = { horizontal: "right", vertical: "middle" }
     })
+    // Columna I total: vacío
+    const cI = ws.getCell(totalRow, 9)
+    cI.value = ""
+    cI.fill = totalFill
+    cI.border = thinBorder
 
     // ── Parámetros ────────────────────────────────────────────────
-    const p1 = totalRow + 2
-    const p2 = p1 + 1
+    const p1 = totalRow + 2  // fila tipo de cambio  = dataStart + productos.length + 2
+    const p2 = p1 + 1        // fila margen          = dataStart + productos.length + 3
 
     ws.mergeCells(`A${p1}:C${p1}`)
     ws.getCell(`A${p1}`).value = "TIPO DE CAMBIO (BRL → Bs.)"
