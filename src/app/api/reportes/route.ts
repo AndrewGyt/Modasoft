@@ -110,8 +110,21 @@ export async function GET(req: Request) {
     .sort((a, b) => b.total - a.total)
     .slice(0, 10)
 
+  // Inventario actual (siempre es el de hoy)
   const valorInventario = variantes.reduce((acc, v) => acc + v.stockActual * v.producto.precioVenta, 0)
   const costoInventario = variantes.reduce((acc, v) => acc + v.stockActual * v.producto.precioCompra, 0)
+
+  // Margen real del mes: basado en lo vendido ese mes
+  let ingresosMes = 0
+  let costoVendidoMes = 0
+  detallesVentas.forEach((d) => {
+    ingresosMes += d.cantidad * d.precioUnitario
+    costoVendidoMes += d.cantidad * d.variante.producto.precioCompra
+  })
+  const margenMes = ingresosMes - costoVendidoMes
+  const margenPorcentajeMes = ingresosMes > 0
+    ? ((margenMes / ingresosMes) * 100).toFixed(1)
+    : "0.0"
 
   // Métodos de pago del mes
   const metodos: Record<string, { count: number; total: number }> = {}
@@ -138,6 +151,10 @@ export async function GET(req: Request) {
     topProductos,
     valorInventario,
     costoInventario,
+    margenMes,
+    margenPorcentajeMes,
+    ingresosMes,
+    costoVendidoMes,
     ventasMesCount: ventasMes.length,
     ventasMesAnteriorCount: ventasMesAnterior.length,
     ventasPorMetodo,

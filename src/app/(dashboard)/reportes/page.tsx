@@ -13,6 +13,10 @@ interface ReporteData {
   topProductos: { nombre: string; cantidad: number; total: number }[]
   valorInventario: number
   costoInventario: number
+  margenMes: number
+  margenPorcentajeMes: string
+  ingresosMes: number
+  costoVendidoMes: number
   ventasMesCount: number
   ventasMesAnteriorCount: number
   ventasPorMetodo: { metodo: string; count: number; total: number }[]
@@ -197,18 +201,16 @@ export default function ReportesPage() {
                 positivo: null,
               },
               {
-                label: "Valor inventario",
-                value: `Bs. ${data.valorInventario.toFixed(2)}`,
-                sub: "a precio de venta",
-                positivo: null,
+                label: "Margen del mes",
+                value: `Bs. ${data.margenMes.toFixed(2)}`,
+                sub: `${data.margenPorcentajeMes}% sobre ventas`,
+                positivo: data.margenMes >= 0,
               },
               {
-                label: "Margen potencial",
-                value: `Bs. ${(data.valorInventario - data.costoInventario).toFixed(2)}`,
-                sub: data.costoInventario > 0
-                  ? `${(((data.valorInventario - data.costoInventario) / data.costoInventario) * 100).toFixed(1)}% sobre costo`
-                  : "",
-                positivo: true,
+                label: "Valor inventario actual",
+                value: `Bs. ${data.valorInventario.toFixed(2)}`,
+                sub: `Costo: Bs. ${data.costoInventario.toFixed(2)}`,
+                positivo: null,
               },
             ].map((card) => (
               <div key={card.label} className="rounded-xl border p-5 space-y-2"
