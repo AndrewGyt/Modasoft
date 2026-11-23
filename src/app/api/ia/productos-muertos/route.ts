@@ -35,28 +35,25 @@ export async function GET() {
         margen: ((v.producto.precioVenta - v.producto.precioCompra) / v.producto.precioVenta * 100).toFixed(1),
       }))
 
+    // Limitar a 50 productos para no exceder tokens
+    const productosMuertosLimitados = productosMuertos.slice(0, 50)
+
     const prompt = `Eres experto en retail de moda boliviana. Estos productos llevan 90+ días sin venderse en Tendance y tienen stock disponible. Sugiere estrategias de liquidación específicas.
 
-PRODUCTOS SIN MOVIMIENTO:
-${JSON.stringify(productosMuertos, null, 2)}
+PRODUCTOS SIN MOVIMIENTO (${productosMuertosLimitados.length} items):
+${JSON.stringify(productosMuertosLimitados.map(p => ({
+  id: p.varianteId,
+  producto: p.producto,
+  cat: p.categoria,
+  talla: p.talla,
+  color: p.color,
+  stock: p.stockActual,
+  pvp: p.precioVenta,
+  costo: p.precioCompra,
+})), null, 1)}
 
-Responde ÚNICAMENTE con JSON válido sin backticks. Usa punto como decimal:
-{
-  "resumen": "texto corto con el impacto en el negocio",
-  "productos": [
-    {
-      "varianteId": "id exacto",
-      "producto": "nombre",
-      "estrategia": "DESCUENTO|COMBO|SHOWCASE|DEVOLVER",
-      "descuentoSugerido": numero entre 0 y 100,
-      "precioSugerido": numero,
-      "razon": "razón corta max 80 chars",
-      "urgencia": "ALTA|MEDIA|BAJA"
-    }
-  ],
-  "capitalInmovilizado": numero,
-  "accionPrioritaria": "texto corto con la acción más urgente"
-}`
+Responde ÚNICAMENTE con JSON válido sin backticks ni markdown. Usa punto como decimal. Sé conciso en los textos:
+{"resumen":"texto","productos":[{"varianteId":"id","estrategia":"DESCUENTO|COMBO|SHOWCASE|DEVOLVER","descuentoSugerido":0,"precioSugerido":0,"razon":"max 60 chars","urgencia":"ALTA|MEDIA|BAJA"}],"capitalInmovilizado":0,"accionPrioritaria":"texto"}`
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -67,7 +64,7 @@ Responde ÚNICAMENTE con JSON válido sin backticks. Usa punto como decimal:
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 2000,
+        max_tokens: 8000,
         messages: [{ role: "user", content: prompt }],
       }),
     })
@@ -75,11 +72,28 @@ Responde ÚNICAMENTE con JSON válido sin backticks. Usa punto como decimal:
     const data = await response.json()
     if (!response.ok) throw new Error(data.error?.message)
 
+    const stopReason = data.stop_reason
     const texto = data.content?.[0]?.text || ""
-    const textoLimpio = texto.replace(/```json/g, "").replace(/```/g, "").trim()
-    const analisis = JSON.parse(textoLimpio)
+    if (stopReason === "max_tokens") {
+      console.warn("Respuesta IA truncada — intentando reparar JSON")
+    }
 
-    return NextResponse.json({ analisis, productosMuertos })
+    const textoLimpio = texto.replace(/```json/g, "").replace(/```/g, "").trim()
+
+    let analisis
+    try {
+      analisis = JSON.parse(textoLimpio)
+    } catch {
+      const corte = textoLimpio.lastIndexOf("},")
+      if (corte !== -1) {
+        const reparado = textoLimpio.slice(0, corte + 1) + "]}"
+        analisis = JSON.parse(reparado)
+      } else {
+        throw new Error("JSON de IA inválido y no reparable")
+      }
+    }
+
+    return NextResponse.json({ analisis, productosMuertos, totalSinAnalisis: productosMuertos.length - productosMuertosLimitados.length })
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: "Error analizando productos" }, { status: 500 })
