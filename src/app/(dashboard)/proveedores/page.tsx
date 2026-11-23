@@ -2,6 +2,8 @@ import { db } from "@/lib/db"
 import Link from "next/link"
 import { Truck } from "lucide-react"
 
+export const dynamic = "force-dynamic"
+
 export default async function ProveedoresPage() {
   const proveedores = await db.proveedor.findMany({
     where: { tenantId: "tendance-001" },

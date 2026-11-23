@@ -3,6 +3,8 @@ import { ShoppingCart, Package, AlertTriangle, TrendingUp } from "lucide-react"
 import GraficoVentas from "@/components/modules/GraficoVentas"
 import GraficoMetodoPago from "@/components/modules/GraficoMetodoPago"
 
+export const dynamic = "force-dynamic"
+
 const TENANT_ID = "tendance-001"
 
 export default async function DashboardPage() {

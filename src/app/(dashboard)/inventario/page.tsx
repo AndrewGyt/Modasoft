@@ -2,6 +2,8 @@ import { db } from "@/lib/db"
 import { Package, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 
+export const dynamic = "force-dynamic"
+
 export default async function InventarioPage() {
   const variantes = await db.variante.findMany({
     include: {
