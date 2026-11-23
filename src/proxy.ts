@@ -7,7 +7,8 @@ export default auth((req) => {
     req.nextUrl.pathname.startsWith("/register")
   const isApiAuth = req.nextUrl.pathname.startsWith("/api/auth")
 
-  if (isApiAuth) return NextResponse.next()
+  const isSetupRoute = req.nextUrl.pathname.startsWith("/api/setup-user")
+  if (isApiAuth || isSetupRoute) return NextResponse.next()
 
   if (!isLoggedIn && !isAuthPage) {
     return NextResponse.redirect(new URL("/login", req.url))
