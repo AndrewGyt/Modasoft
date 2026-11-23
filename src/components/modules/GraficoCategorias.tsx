@@ -28,7 +28,7 @@ export default function GraficoCategorias({ datos }: Props) {
           width={80}
         />
         <Tooltip
-          formatter={(value: number) => [`Bs. ${value.toFixed(2)}`, "Ventas"]}
+          formatter={(value) => [`Bs. ${Number(value).toFixed(2)}`, "Ventas"]}
           contentStyle={{
             background: "var(--card)",
             border: "1px solid var(--border)",

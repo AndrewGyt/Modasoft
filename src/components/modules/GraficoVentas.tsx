@@ -23,7 +23,7 @@ export default function GraficoVentas({ datos }: Props) {
           tickFormatter={(v) => `Bs.${v}`}
         />
         <Tooltip
-          formatter={(value: number) => [`Bs. ${value.toFixed(2)}`, "Ventas"]}
+          formatter={(value) => [`Bs. ${Number(value).toFixed(2)}`, "Ventas"]}
           contentStyle={{
             background: "var(--card)",
             border: "1px solid var(--border)",
