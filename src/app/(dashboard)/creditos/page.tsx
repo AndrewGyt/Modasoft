@@ -39,6 +39,7 @@ export default function CreditosPage() {
   const [registrandoPago, setRegistrandoPago] = useState(false)
   const [errorPago, setErrorPago] = useState("")
   const [filtroNombre, setFiltroNombre] = useState("")
+  const [filtroMes, setFiltroMes] = useState("")
 
   const cargarCreditos = () => {
     fetch("/api/creditos")
@@ -48,17 +49,30 @@ export default function CreditosPage() {
 
   useEffect(() => { cargarCreditos() }, [])
 
-  const creditosFiltrados = creditos.filter((c) =>
-    filtroNombre === "" ||
-    c.cliente.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
-  )
+  const creditosFiltrados = creditos.filter((c) => {
+    const matchNombre = filtroNombre === "" ||
+      c.cliente.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
+    const matchMes = filtroMes === "" ||
+      (c.venta.createdAt as string).slice(0, 7) === filtroMes
+    return matchNombre && matchMes
+  })
 
   const totalPendiente = creditosFiltrados
     .filter((c) => c.estado !== "PAGADO")
     .reduce((acc, c) => acc + (c.montoTotal - c.montoPagado), 0)
 
+  const totalVencido = creditosFiltrados
+    .filter((c) => c.estado === "VENCIDO")
+    .reduce((acc, c) => acc + (c.montoTotal - c.montoPagado), 0)
+
   const creditosActivos = creditosFiltrados.filter((c) => c.estado !== "PAGADO").length
   const creditosVencidos = creditosFiltrados.filter((c) => c.estado === "VENCIDO").length
+
+  // Meses únicos disponibles en los créditos
+  // Usamos slice directo del string para evitar conversiones de timezone
+  const mesesDisponibles = [...new Set(
+    creditos.map((c) => (c.venta.createdAt as string).slice(0, 7))
+  )].sort().reverse()
 
   const handleRegistrarPago = async () => {
   if (!creditoSeleccionado || !pago.monto) return
@@ -108,9 +122,12 @@ export default function CreditosPage() {
         </div>
       </div>
 
+      {/* Tarjetas de resumen — se actualizan con los filtros */}
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border p-5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Total por cobrar</p>
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+            Total por cobrar{filtroMes ? ` · ${new Date(filtroMes + "-02T00:00:00Z").toLocaleDateString("es-BO", { month: "long", year: "numeric" })}` : ""}
+          </p>
           <p className="text-2xl font-bold mt-1" style={{ color: "var(--destructive)" }}>
             Bs. {totalPendiente.toFixed(2)}
           </p>
@@ -121,14 +138,16 @@ export default function CreditosPage() {
             {creditosActivos}
           </p>
         </div>
-        <div className="rounded-xl border p-5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Vencidos</p>
+        <div className="rounded-xl border p-5" style={{ background: "var(--card)", borderColor: "#EF4444" }}>
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Vencidos · Bs.</p>
           <p className="text-2xl font-bold mt-1" style={{ color: "#EF4444" }}>
-            {creditosVencidos}
+            {totalVencido > 0 ? totalVencido.toFixed(2) : creditosVencidos === 0 ? "—" : totalVencido.toFixed(2)}
           </p>
         </div>
       </div>
-      <div style={{ maxWidth: "320px" }}>
+
+      {/* Filtros */}
+      <div className="flex gap-3">
         <input
           placeholder="Buscar por nombre de cliente..."
           value={filtroNombre}
@@ -139,11 +158,55 @@ export default function CreditosPage() {
             borderRadius: "var(--radius-md)",
             color: "var(--foreground)",
             padding: "8px 12px",
-            width: "100%",
+            flex: 1,
             fontSize: "14px",
           }}
         />
+        <select
+          value={filtroMes}
+          onChange={(e) => setFiltroMes(e.target.value)}
+          style={{
+            background: "var(--input)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            color: filtroMes ? "var(--foreground)" : "var(--muted-foreground)",
+            padding: "8px 12px",
+            fontSize: "14px",
+            minWidth: 180,
+          }}
+        >
+          <option value="">Todos los meses</option>
+          {mesesDisponibles.map((m) => (
+            <option key={m} value={m}>
+              {new Date(m + "-02T00:00:00Z").toLocaleDateString("es-BO", { month: "long", year: "numeric" })}
+            </option>
+          ))}
+        </select>
+        {(filtroMes || filtroNombre) && (
+          <button
+            onClick={() => { setFiltroMes(""); setFiltroNombre("") }}
+            style={{
+              padding: "8px 14px",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--border)",
+              background: "transparent",
+              color: "var(--muted-foreground)",
+              fontSize: "13px",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Limpiar
+          </button>
+        )}
       </div>
+
+      {/* Contador de resultados */}
+      {(filtroMes || filtroNombre) && (
+        <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+          {creditosFiltrados.length} crédito(s) encontrado(s)
+        </p>
+      )}
       {loading ? (
         <p style={{ color: "var(--muted-foreground)" }}>Cargando...</p>
       ) : creditos.length === 0 ? (
