@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { ShoppingCart } from "lucide-react"
+import { ShoppingCart, Search, X } from "lucide-react"
 import Link from "next/link"
 
 interface Venta {
@@ -22,6 +22,7 @@ export default function VentasPage() {
   const [ventas, setVentas] = useState<Venta[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroMes, setFiltroMes] = useState("")
+  const [busqueda, setBusqueda] = useState("")
 
   useEffect(() => {
     fetch("/api/ventas")
@@ -33,12 +34,23 @@ export default function VentasPage() {
     ...new Set(ventas.map((v) => (v.createdAt as string).slice(0, 7)))
   ].sort().reverse(), [ventas])
 
-  const ventasFiltradas = useMemo(() =>
-    filtroMes
+  const ventasFiltradas = useMemo(() => {
+    let resultado = filtroMes
       ? ventas.filter((v) => (v.createdAt as string).slice(0, 7) === filtroMes)
-      : ventas,
-    [ventas, filtroMes]
-  )
+      : ventas
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase()
+      resultado = resultado.filter((v) =>
+        v.cliente?.nombre?.toLowerCase().includes(q) ||
+        v.detalles.some(
+          (d) =>
+            d.variante.producto.nombre.toLowerCase().includes(q) ||
+            d.variante.producto.sku.toLowerCase().includes(q)
+        )
+      )
+    }
+    return resultado
+  }, [ventas, filtroMes, busqueda])
 
   const totalHoy = ventas
     .filter((v) => new Date(v.createdAt).toDateString() === new Date().toDateString())
@@ -91,6 +103,37 @@ export default function VentasPage() {
             Bs. {totalFiltrado.toFixed(2)}
           </p>
         </div>
+      </div>
+
+      {/* Buscador */}
+      <div
+        className="flex items-center gap-2 px-3 rounded-lg border"
+        style={{ background: "var(--input)", borderColor: "var(--border)" }}
+      >
+        <Search size={16} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+        <input
+          type="text"
+          placeholder="Buscar por cliente, producto o SKU..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          style={{
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            fontSize: "14px",
+            color: "var(--foreground)",
+            padding: "10px 0",
+            width: "100%",
+          }}
+        />
+        {busqueda && (
+          <button
+            onClick={() => setBusqueda("")}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}
+          >
+            <X size={14} style={{ color: "var(--muted-foreground)" }} />
+          </button>
+        )}
       </div>
 
       {/* Filtro mes */}

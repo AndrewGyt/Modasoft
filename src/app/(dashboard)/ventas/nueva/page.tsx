@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Trash2 } from "lucide-react"
+import { Trash2, Search, X } from "lucide-react"
 
 interface Variante {
   id: string
@@ -12,6 +12,7 @@ interface Variante {
   producto: {
     id: string
     nombre: string
+    sku: string
     precioVenta: number
     categoria: { nombre: string }
   }
@@ -35,6 +36,7 @@ export default function NuevaVentaPage() {
   const [descuento, setDescuento] = useState(0)
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [loading, setLoading] = useState(false)
+  const [clienteNombre, setClienteNombre] = useState("")
   const [clienteFiel, setClienteFiel] = useState(false)
   const [creditoData, setCreditoData] = useState({
   clienteNombre: "",
@@ -58,6 +60,7 @@ export default function NuevaVentaPage() {
               producto: {
                 id: p.id,
                 nombre: p.nombre,
+                sku: p.sku ?? "",
                 precioVenta: p.precioVenta,
                 categoria: p.categoria,
               },
@@ -74,12 +77,16 @@ export default function NuevaVentaPage() {
     }
   }, [subtotal, clienteFiel])
 
-  const variantesFiltradas = variantes.filter(
-    (v) =>
-      v.producto.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      v.talla.toLowerCase().includes(busqueda.toLowerCase()) ||
-      v.color.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const variantesFiltradas = variantes.filter((v) => {
+    if (!busqueda) return true
+    const q = busqueda.toLowerCase()
+    return (
+      v.producto.nombre.toLowerCase().includes(q) ||
+      v.producto.sku.toLowerCase().includes(q) ||
+      v.talla.toLowerCase().includes(q) ||
+      v.color.toLowerCase().includes(q)
+    )
+  })
 
   const agregarAlCarrito = (v: Variante) => {
     const existe = carrito.find((i) => i.varianteId === v.id)
@@ -130,6 +137,7 @@ export default function NuevaVentaPage() {
         total,
         descuento,
         metodoPago,
+        clienteNombre: clienteNombre.trim() || undefined,
       }),
     })
 
@@ -141,7 +149,7 @@ export default function NuevaVentaPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ventaId: ventaCreada.id,
-            clienteNombre: creditoData.clienteNombre,
+            clienteNombre: clienteNombre.trim() || creditoData.clienteNombre,
             clienteTelefono: creditoData.clienteTelefono,
             montoTotal: total,
             montoPagado: parseFloat(creditoData.montoPagado) || 0,
@@ -172,12 +180,35 @@ export default function NuevaVentaPage() {
           Nueva venta
         </h1>
 
-        <input
-          placeholder="Buscar producto, talla o color..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          style={{ ...inputStyle, width: "100%" }}
-        />
+        <div
+          className="flex items-center gap-2 px-3 rounded-lg border"
+          style={{ background: "var(--input)", borderColor: "var(--border)" }}
+        >
+          <Search size={16} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, SKU, talla o color..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            style={{
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              fontSize: "14px",
+              color: "var(--foreground)",
+              padding: "10px 0",
+              width: "100%",
+            }}
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda("")}
+              style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}
+            >
+              <X size={14} style={{ color: "var(--muted-foreground)" }} />
+            </button>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3 overflow-y-auto" style={{ maxHeight: "calc(100vh - 260px)" }}>
           {variantesFiltradas.map((v) => (
@@ -195,9 +226,19 @@ export default function NuevaVentaPage() {
                 textAlign: "left",
               }}
             >
-              <p className="font-medium text-sm" style={{ color: "var(--foreground)" }}>
-                {v.producto.nombre}
-              </p>
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <p className="font-medium text-sm" style={{ color: "var(--foreground)" }}>
+                  {v.producto.nombre}
+                </p>
+                {v.producto.sku && (
+                  <span
+                    className="font-mono text-xs px-1.5 py-0.5 rounded shrink-0"
+                    style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}
+                  >
+                    {v.producto.sku}
+                  </span>
+                )}
+              </div>
               <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
                 {v.talla} · {v.color} · Stock: {v.stockActual}
               </p>
@@ -262,6 +303,17 @@ export default function NuevaVentaPage() {
         </div>
 
         <div className="space-y-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+          {/* Campo cliente */}
+          <div>
+            <input
+              type="text"
+              placeholder="Cliente (opcional)"
+              value={clienteNombre}
+              onChange={(e) => setClienteNombre(e.target.value)}
+              style={{ ...inputStyle, width: "100%" }}
+            />
+          </div>
+
           <div className="flex justify-between text-sm" style={{ color: "var(--muted-foreground)" }}>
             <span>Subtotal</span>
             <span>Bs. {subtotal.toFixed(2)}</span>
@@ -321,12 +373,6 @@ export default function NuevaVentaPage() {
                   {metodoPago === "credito" && (
           <div className="space-y-2 p-3 rounded-lg" style={{ background: "var(--muted)" }}>
             <p className="text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>DATOS DEL CRÉDITO</p>
-            <input
-              placeholder="Nombre del cliente *"
-              value={creditoData.clienteNombre}
-              onChange={(e) => setCreditoData({ ...creditoData, clienteNombre: e.target.value })}
-              style={{ ...inputStyle, width: "100%", marginBottom: "6px" }}
-            />
             <input
               placeholder="Teléfono (opcional)"
               value={creditoData.clienteTelefono}
