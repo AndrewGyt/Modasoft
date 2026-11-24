@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Trash2, Search, X } from "lucide-react"
+import { Trash2, Search, X, User, Plus } from "lucide-react"
 
 interface Variante {
   id: string
@@ -36,7 +36,12 @@ export default function NuevaVentaPage() {
   const [descuento, setDescuento] = useState(0)
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [loading, setLoading] = useState(false)
-  const [clienteNombre, setClienteNombre] = useState("")
+  // Cliente autocompletar
+  const [clienteInput, setClienteInput] = useState("")
+  const [clienteId, setClienteId] = useState<string | null>(null)
+  const [clienteSugerencias, setClienteSugerencias] = useState<{id: string, nombre: string, telefono: string | null}[]>([])
+  const [clienteDropdown, setClienteDropdown] = useState(false)
+  const clienteRef = useRef<HTMLDivElement>(null)
   const [clienteFiel, setClienteFiel] = useState(false)
   const [creditoData, setCreditoData] = useState({
   clienteNombre: "",
@@ -69,6 +74,31 @@ export default function NuevaVentaPage() {
         })
         setVariantes(todasVariantes)
       })
+  }, [])
+
+  // Buscar clientes con debounce
+  useEffect(() => {
+    if (!clienteInput.trim() || clienteId) {
+      setClienteSugerencias([])
+      return
+    }
+    const t = setTimeout(() => {
+      fetch(`/api/clientes?q=${encodeURIComponent(clienteInput)}`)
+        .then((r) => r.json())
+        .then((data) => setClienteSugerencias(data.slice(0, 6)))
+    }, 200)
+    return () => clearTimeout(t)
+  }, [clienteInput, clienteId])
+
+  // Cerrar dropdown al clickar afuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setClienteDropdown(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
   }, [])
 
   useEffect(() => {
@@ -137,7 +167,8 @@ export default function NuevaVentaPage() {
         total,
         descuento,
         metodoPago,
-        clienteNombre: clienteNombre.trim() || undefined,
+        clienteId: clienteId || undefined,
+        clienteNombre: !clienteId && clienteInput.trim() ? clienteInput.trim() : undefined,
       }),
     })
 
@@ -149,7 +180,7 @@ export default function NuevaVentaPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ventaId: ventaCreada.id,
-            clienteNombre: clienteNombre.trim() || creditoData.clienteNombre,
+            clienteNombre: clienteInput.trim() || creditoData.clienteNombre,
             clienteTelefono: creditoData.clienteTelefono,
             montoTotal: total,
             montoPagado: parseFloat(creditoData.montoPagado) || 0,
@@ -303,15 +334,101 @@ export default function NuevaVentaPage() {
         </div>
 
         <div className="space-y-3 border-t pt-4" style={{ borderColor: "var(--border)" }}>
-          {/* Campo cliente */}
-          <div>
-            <input
-              type="text"
-              placeholder="Cliente (opcional)"
-              value={clienteNombre}
-              onChange={(e) => setClienteNombre(e.target.value)}
-              style={{ ...inputStyle, width: "100%" }}
-            />
+          {/* Campo cliente con autocompletar */}
+          <div ref={clienteRef} style={{ position: "relative" }}>
+            <div
+              className="flex items-center gap-2 px-3 rounded-lg border"
+              style={{
+                background: "var(--input)",
+                borderColor: clienteId ? "var(--primary)" : "var(--border)",
+              }}
+            >
+              <User size={14} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+              <input
+                type="text"
+                placeholder="Cliente (opcional)"
+                value={clienteInput}
+                onChange={(e) => {
+                  setClienteInput(e.target.value)
+                  setClienteId(null)
+                  setClienteDropdown(true)
+                }}
+                onFocus={() => { if (clienteInput && !clienteId) setClienteDropdown(true) }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  fontSize: "14px",
+                  color: "var(--foreground)",
+                  padding: "9px 0",
+                  width: "100%",
+                }}
+              />
+              {clienteInput && (
+                <button
+                  onClick={() => { setClienteInput(""); setClienteId(null); setClienteSugerencias([]) }}
+                  style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}
+                >
+                  <X size={13} style={{ color: "var(--muted-foreground)" }} />
+                </button>
+              )}
+            </div>
+
+            {/* Dropdown sugerencias */}
+            {clienteDropdown && (clienteSugerencias.length > 0 || clienteInput.trim()) && (
+              <div
+                className="absolute left-0 right-0 rounded-lg border shadow-lg overflow-hidden z-50"
+                style={{ top: "calc(100% + 4px)", background: "var(--card)", borderColor: "var(--border)" }}
+              >
+                {clienteSugerencias.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setClienteInput(c.nombre); setClienteId(c.id); setClienteDropdown(false) }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "10px 14px",
+                      background: "transparent", border: "none",
+                      borderBottom: "1px solid var(--border)",
+                      cursor: "pointer", textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--muted)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <User size={14} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{c.nombre}</p>
+                      {c.telefono && (
+                        <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{c.telefono}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+                {/* Opción crear nuevo */}
+                {clienteInput.trim() && !clienteSugerencias.find((c) => c.nombre.toLowerCase() === clienteInput.toLowerCase()) && (
+                  <button
+                    onClick={() => { setClienteId(null); setClienteDropdown(false) }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "10px 14px",
+                      background: "transparent", border: "none",
+                      cursor: "pointer", textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--muted)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <Plus size={14} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                    <p className="text-sm" style={{ color: "var(--primary)" }}>
+                      Crear &quot;{clienteInput}&quot; como nuevo cliente
+                    </p>
+                  </button>
+                )}
+              </div>
+            )}
+            {clienteId && (
+              <p className="text-xs mt-1" style={{ color: "var(--primary)" }}>
+                ✓ Cliente registrado seleccionado
+              </p>
+            )}
           </div>
 
           <div className="flex justify-between text-sm" style={{ color: "var(--muted-foreground)" }}>

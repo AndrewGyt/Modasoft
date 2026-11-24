@@ -44,6 +44,19 @@ export async function POST(req: Request) {
     await getUsuario()
     const body = await req.json()
 
+    // Resolver cliente: usar clienteId si viene, o crear uno nuevo si viene nombre
+    let clienteId: string | undefined = body.clienteId || undefined
+    if (!clienteId && body.clienteNombre?.trim()) {
+      const nuevo = await db.cliente.create({
+        data: {
+          tenantId: TENANT_ID,
+          nombre: body.clienteNombre.trim(),
+          telefono: body.clienteTelefono || null,
+        },
+      })
+      clienteId = nuevo.id
+    }
+
     const venta = await db.venta.create({
       data: {
         tenantId: TENANT_ID,
@@ -51,6 +64,7 @@ export async function POST(req: Request) {
         total: body.total,
         descuento: body.descuento || 0,
         metodoPago: body.metodoPago,
+        ...(clienteId && { clienteId }),
         detalles: {
           create: body.items.map((item: any) => ({
             varianteId: item.varianteId,
