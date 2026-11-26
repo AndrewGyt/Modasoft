@@ -1,22 +1,22 @@
 import { db } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 
 const TENANT_ID = "tendance-001"
-const USUARIO_EMAIL = "andre_rf97@hotmail.com"
 
-async function getUsuarioId(): Promise<string> {
+async function getUsuarioId(email: string, nombre: string): Promise<string> {
   const usuario = await db.usuario.findFirst({
-    where: { tenantId: TENANT_ID, email: USUARIO_EMAIL },
+    where: { tenantId: TENANT_ID, email },
   })
   if (usuario) return usuario.id
 
-  // Si no existe, crearlo (primera vez)
+  // Primera vez que este usuario registra una venta — crear registro
   const nuevo = await db.usuario.create({
     data: {
       tenantId: TENANT_ID,
-      nombre: "Andre",
-      email: USUARIO_EMAIL,
-      rol: "ADMIN",
+      nombre: nombre || email,
+      email,
+      rol: "VENDEDOR",
     },
   })
   return nuevo.id
@@ -43,7 +43,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const usuarioId = await getUsuarioId()
+    const session = await auth()
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+    const usuarioId = await getUsuarioId(
+      session.user.email,
+      session.user.name ?? session.user.email
+    )
     const body = await req.json()
 
     // Resolver cliente: usar clienteId si viene, o crear uno nuevo si viene nombre
