@@ -66,12 +66,19 @@ export async function POST(req: Request) {
         tipoCambio: body.tipoCambio || null,
         margenGanancia: body.margenGanancia || null,
         variantes: {
-          create: {
-            talla: body.talla,
-            color: body.color,
-            stockActual: parseInt(body.stockActual),
-            stockMinimo: parseInt(body.stockMinimo),
-          },
+          create: Array.isArray(body.variantes)
+            ? body.variantes.map((v: any) => ({
+                talla: v.talla,
+                color: v.color || null,
+                stockActual: parseInt(v.stockActual) || 0,
+                stockMinimo: parseInt(v.stockMinimo) || 1,
+              }))
+            : [{
+                talla: body.talla,
+                color: body.color,
+                stockActual: parseInt(body.stockActual),
+                stockMinimo: parseInt(body.stockMinimo),
+              }],
         },
       },
     })
