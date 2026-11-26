@@ -36,6 +36,7 @@ export default function NuevaVentaPage() {
   const [descuento, setDescuento] = useState(0)
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   // Cliente autocompletar
   const [clienteInput, setClienteInput] = useState("")
   const [clienteId, setClienteId] = useState<string | null>(null)
@@ -152,48 +153,67 @@ export default function NuevaVentaPage() {
   }
 
   const handleRegistrarVenta = async () => {
-  if (carrito.length === 0) return
-  setLoading(true)
-  try {
-    const res = await fetch("/api/ventas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: carrito.map((i) => ({
-          varianteId: i.varianteId,
-          cantidad: i.cantidad,
-          precioUnitario: i.precioUnitario,
-        })),
-        total,
-        descuento,
-        metodoPago,
-        clienteId: clienteId || undefined,
-        clienteNombre: !clienteId && clienteInput.trim() ? clienteInput.trim() : undefined,
-      }),
-    })
+    if (carrito.length === 0) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/ventas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: carrito.map((i) => ({
+            varianteId: i.varianteId,
+            cantidad: i.cantidad,
+            precioUnitario: i.precioUnitario,
+          })),
+          total,
+          descuento,
+          metodoPago,
+          clienteId: clienteId || undefined,
+          clienteNombre: !clienteId && clienteInput.trim() ? clienteInput.trim() : undefined,
+        }),
+      })
 
-    if (res.ok) {
-      const ventaCreada = await res.json()
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data?.error || `Error ${res.status} al registrar la venta`)
+        return
+      }
+
       if (metodoPago === "credito") {
-        await fetch("/api/creditos", {
+        const clienteNombreCredito = clienteInput.trim() || creditoData.clienteNombre
+        if (!clienteNombreCredito) {
+          setError("El crédito requiere un nombre de cliente")
+          return
+        }
+        const resCredito = await fetch("/api/creditos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ventaId: ventaCreada.id,
-            clienteNombre: clienteInput.trim() || creditoData.clienteNombre,
+            ventaId: data.id,
+            clienteNombre: clienteNombreCredito,
             clienteTelefono: creditoData.clienteTelefono,
             montoTotal: total,
             montoPagado: parseFloat(creditoData.montoPagado) || 0,
             fechaVencimiento: creditoData.fechaVencimiento,
           }),
         })
+        if (!resCredito.ok) {
+          const errCredito = await resCredito.json()
+          setError(errCredito?.error || "Error al registrar el crédito")
+          return
+        }
       }
+
       router.push("/ventas")
+    } catch (e) {
+      setError("Error de conexión. Revisá tu internet e intentá de nuevo.")
+      console.error(e)
+    } finally {
+      setLoading(false)
     }
-  } finally {
-    setLoading(false)
   }
-}
 
   const inputStyle = {
     background: "var(--input)",
@@ -512,6 +532,15 @@ export default function NuevaVentaPage() {
           </div>
         )}
           
+
+          {error && (
+            <div
+              className="p-3 rounded-lg text-xs font-medium"
+              style={{ background: "var(--destructive)", color: "white" }}
+            >
+              {error}
+            </div>
+          )}
 
           <button
             onClick={handleRegistrarVenta}
