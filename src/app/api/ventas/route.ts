@@ -2,22 +2,24 @@ import { db } from "@/lib/db"
 import { NextResponse } from "next/server"
 
 const TENANT_ID = "tendance-001"
-const USUARIO_ID = "usuario-demo"
+const USUARIO_EMAIL = "andre_rf97@hotmail.com"
 
-async function getUsuario() {
-  let usuario = await db.usuario.findUnique({ where: { id: USUARIO_ID } })
-  if (!usuario) {
-    usuario = await db.usuario.create({
-      data: {
-        id: USUARIO_ID,
-        tenantId: TENANT_ID,
-        nombre: "Andre",
-        email: "andre_rf97@hotmail.com",
-        rol: "ADMIN",
-      },
-    })
-  }
-  return usuario
+async function getUsuarioId(): Promise<string> {
+  const usuario = await db.usuario.findFirst({
+    where: { tenantId: TENANT_ID, email: USUARIO_EMAIL },
+  })
+  if (usuario) return usuario.id
+
+  // Si no existe, crearlo (primera vez)
+  const nuevo = await db.usuario.create({
+    data: {
+      tenantId: TENANT_ID,
+      nombre: "Andre",
+      email: USUARIO_EMAIL,
+      rol: "ADMIN",
+    },
+  })
+  return nuevo.id
 }
 
 export async function GET() {
@@ -41,7 +43,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await getUsuario()
+    const usuarioId = await getUsuarioId()
     const body = await req.json()
 
     // Resolver cliente: usar clienteId si viene, o crear uno nuevo si viene nombre
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
     const venta = await db.venta.create({
       data: {
         tenantId: TENANT_ID,
-        usuarioId: USUARIO_ID,
+        usuarioId: usuarioId,
         total: body.total,
         descuento: body.descuento || 0,
         metodoPago: body.metodoPago,
